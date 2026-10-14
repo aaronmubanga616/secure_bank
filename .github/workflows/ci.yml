@@ -1,0 +1,33 @@
+name: SecureBank checks
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  frontends:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: npm }
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run build
+      - run: npm run build:mobile
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 21, cache: maven }
+      - run: mvn -B verify
+        working-directory: backend
+  containers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t securebank-api backend
+      - run: docker build -f Dockerfile.frontend --build-arg APP=web -t securebank-web .
+      - run: docker build -f Dockerfile.frontend --build-arg APP=admin -t securebank-admin .

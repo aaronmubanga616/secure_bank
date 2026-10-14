@@ -1,0 +1,75 @@
+spring:
+  application:
+    name: securebank-api
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/securebank}
+    username: ${POSTGRES_USER:securebank}
+    password: ${POSTGRES_PASSWORD}
+    hikari:
+      maximum-pool-size: 15
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD}
+      timeout: 2s
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: securebank
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      properties:
+        isolation.level: read_committed
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      properties:
+        enable.idempotence: true
+server:
+  port: ${PORT:8080}
+  error:
+    include-message: never
+    include-stacktrace: never
+  shutdown: graceful
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: when_authorized
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: securebank
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+logging:
+  structured:
+    format:
+      console: logstash
+securebank:
+  cors-origins: ${CORS_ORIGINS:http://localhost:5173,http://localhost:5174,http://localhost:8088}
+  jwt-secret: ${JWT_SECRET}
+  encryption-key: ${ENCRYPTION_KEY}
+  access-token-minutes: 10
+  refresh-token-days: 7
+  events-enabled: ${EVENTS_ENABLED:true}
+  jobs-enabled: ${JOBS_ENABLED:true}
+springdoc:
+  api-docs:
+    enabled: ${API_DOCS_ENABLED:false}
+  swagger-ui:
+    enabled: ${API_DOCS_ENABLED:false}

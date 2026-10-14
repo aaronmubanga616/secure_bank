@@ -1,0 +1,11 @@
+.git
+.tools
+.local
+node_modules
+**/node_modules
+**/dist
+**/target
+**/.expo
+.env
+tmp
+test-results

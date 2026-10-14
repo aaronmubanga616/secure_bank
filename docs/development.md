@@ -31,3 +31,11 @@ Build a portfolio banking simulator with working customer, mobile, and staff app
 - Verify builds and relevant tests before marking stages complete.
 - Record verification limitations honestly; configured CI is not proof that a check ran locally.
 - Keep frontend money display separate from authoritative backend calculations.
+
+## Toolchain choices
+
+- Java 21 LTS and Spring Boot 3.5 use the stable Spring Security 6 and Hibernate APIs. See [Spring's supported toolchains](https://docs.spring.io/spring-boot/3.5/system-requirements.html).
+- Expo SDK 57 targets React Native 0.86 and React 19.2.3. Native dependency versions must match [Expo's SDK matrix](https://docs.expo.dev/versions/v57.0.0/); use `npx expo install --check` inside `apps/mobile` after upgrades.
+- npm workspaces share contracts and a lockfile. Vite builds the two browser applications independently.
+
+On Windows, an emoji in a parent directory can break the native Java launcher. Clone into a path using ordinary letters if this occurs, or build the backend in Docker. Local verification may use a temporary copy of `backend` in an ASCII path; never copy secrets or commit machine-specific toolchains.
