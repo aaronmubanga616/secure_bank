@@ -2,8 +2,13 @@
   "name": "securebank",
   "version": "0.1.0",
   "private": true,
-  "workspaces": ["apps/*", "packages/*"],
-  "engines": { "node": ">=22.13.0" },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22.13.0"
+  },
   "scripts": {
     "dev:web": "npm run dev --workspace @securebank/web",
     "dev:admin": "npm run dev --workspace @securebank/admin",
@@ -33,5 +38,13 @@
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.0",
     "vitest": "^4.0.0"
+  },
+  "overrides": {
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-native-reanimated": "4.5.1",
+    "react-native-worklets": "0.10.1",
+    "react-native-gesture-handler": "2.32.0",
+    "react-native-screens": "4.26.2"
   }
 }

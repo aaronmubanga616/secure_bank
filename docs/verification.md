@@ -44,3 +44,11 @@ Backend verification passed ten unit/HTTP tests and twenty-seven integration tes
 
 Backend verification passed ten unit/HTTP tests and thirty-one integration tests after the event stage, including a real Kafka container, poison-message delivery, duplicate suppression, atomic rollback, and encrypted mail retries. A focused fraud/payment run passed twelve integration tests. Additional focused fraud and statement verification passed four integration tests; held transfers have no journal until approval and cannot be released twice.
 
+## Statements and customer web
+
+PDF tests verify exact posted opening/closing balances, masked identifiers, and owner-only access. A rendered statement was visually inspected. Notification tests prove owner-only read changes and duplicate suppression.
+
+Two live Playwright journeys passed against the running API, PostgreSQL, Redis, Kafka, and Mailpit: registration, email verification, login, account opening, deposit review/receipt, dashboard balance, mobile navigation, a PDF download, asynchronous notification delivery, and an insufficient-funds withdrawal. Desktop and 390-pixel screenshots were reviewed; phone layout has no document overflow. The browser run exposed and corrected duplicate React versions, select-label accessibility, and an absolute-positioned table label escaping its scroll container.
+
+Shared-client tests passed four checks. Browser tokens stay in memory; reloading requires sign-in. The only persisted browser value is a random, non-secret device hint.
+
