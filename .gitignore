@@ -1,0 +1,30 @@
+# Dependencies and build output
+node_modules/
+dist/
+build/
+target/
+.expo/
+.vite/
+coverage/
+playwright-report/
+test-results/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.jks
+
+# Local tooling and scratch files
+.tools/
+.local/
+tmp/
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.iml
