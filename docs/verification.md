@@ -35,3 +35,7 @@ Backend verification passed eight unit/HTTP tests and seventeen integration test
 ## Concurrent spending and limits
 
 Backend verification passed eight unit/HTTP tests and twenty-two integration tests. Two simultaneous K800 withdrawals against K1,000 produced one completion and one decline, leaving K200. Eight simultaneous retries produced one transaction and two journal entries. Eight transfers from two accounts respected one shared daily limit. Tests also verify customer-scoped keys, immutable saved responses, and denial of limit changes by customer/support/compliance roles.
+
+## Recipients and schedules
+
+Backend verification passed ten unit/HTTP tests and twenty-seven integration tests. New tests cover month-end/leap-year recurrence, recipient and schedule ownership, password confirmation, cancellation on recipient deletion, two simultaneous workers, and recovery after money committed before schedule bookkeeping. A focused schedule verification also runs after improving lookups for older schedule records.

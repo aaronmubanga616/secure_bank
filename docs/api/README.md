@@ -51,6 +51,14 @@ A valid intent creates a resource with HTTP 201. **Check the returned `status`:*
 
 Administrators can `PATCH /admin/limits` with `perTransaction`, `dailyTransfer`, `dailyWithdrawal`, and `dailyDeposit`, each a positive decimal amount up to K1 billion. Customers, support agents, and compliance officers cannot change limits. Saved financial response bodies are immutable and replayed under the original customer/key; `GET /transactions/{id}` reads the current resource state.
 
+## Recipients and schedules
+
+`GET /beneficiaries` lists saved recipients. `POST /beneficiaries` accepts `name`, `accountNumber`, `password`, and `code` when MFA is enabled. `DELETE /beneficiaries/{id}` archives the recipient and cancels pending or paused schedules for that recipient. Saved recipients remain owner scoped; historical records are preserved.
+
+`GET /scheduled-transfers` returns up to 200 schedules, with active/paused schedules first. `POST /scheduled-transfers` accepts `sourceAccount`, `beneficiaryId`, `amount`, `description`, `frequency` (ONCE, DAILY, WEEKLY, MONTHLY), `startsAt` (ISO timestamp within the next year), `password`, and MFA `code` when applicable. `PATCH /scheduled-transfers/{id}` accepts `status: ACTIVE | PAUSED | CANCELLED` for an unfinished schedule.
+
+The worker executes due payments every fifteen seconds. Each occurrence has a deterministic financial idempotency key. Money commits independently of schedule bookkeeping, so a crash after a payment cannot cause another payment when the worker resumes. Transient technical failures retry up to three times with backoff. A business decline is a final financial result; recurring schedules advance to the next occurrence. A resumed overdue schedule runs once and skips missed slots. Monthly schedules preserve their original day, using the last day of shorter months. Cancellation stops future dispatch; it cannot undo money already committed by an in-flight occurrence.
+
 ## Error format
 
 Errors contain `status`, `code`, `message`, `correlationId`, and optional `fieldErrors`. Unknown resources return 404; unauthorized actions return 403; invalid or expired sessions return 401; rate limits return 429. Unexpected errors never expose stack traces or submitted credentials.

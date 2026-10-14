@@ -173,6 +173,22 @@ public class AuthService {
     }
 
     @Transactional
+    public void stepUp(UUID id,String password,String code) {
+        limiter.hit("step-up:"+id,10,Duration.ofMinutes(5));
+        User user=users.lockById(id).orElseThrow(AuthService::unauthenticated);
+        if (!user.status().equals("ACTIVE") || !user.emailVerified()) throw new ApiException(HttpStatus.FORBIDDEN,"ACCOUNT_INELIGIBLE","This user cannot perform this action.");
+        if (password==null || password.getBytes(StandardCharsets.UTF_8).length>72 || !passwords.matches(password,user.passwordHash()))
+            throw new ApiException(HttpStatus.FORBIDDEN,"VERIFICATION_FAILED","Check your password and security code.");
+        if (user.mfaEnabled()) {
+            try { requireMfa(user,code==null?"":code); }
+            catch(ApiException error) {
+                if (error.status()==HttpStatus.UNAUTHORIZED) throw new ApiException(HttpStatus.FORBIDDEN,"VERIFICATION_FAILED","Check your password and security code.");
+                throw error;
+            }
+        }
+    }
+
+    @Transactional
     public RecoveryCodes confirmMfa(UUID id,String code) {
         limiter.hit("mfa-confirm:"+id,5,Duration.ofMinutes(10));
         User user=users.lockById(id).orElseThrow(AuthService::unauthenticated);
