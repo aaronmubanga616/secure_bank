@@ -4,7 +4,6 @@ import dev.securebank.common.ApiException;
 import dev.securebank.notifications.EmailGateway;
 import dev.securebank.users.UserRepository;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -47,17 +46,20 @@ class AuthenticationIT {
     @Autowired JdbcTemplate jdbc;
     @Autowired JwtDecoder decoder;
     @Autowired Totp totp;
+    @Autowired Crypto crypto;
     @MockitoBean EmailGateway mail;
     private final String password="A test password 123!";
+    private String mailToken(String email,String subject) {
+        String encrypted=jdbc.queryForObject("SELECT encrypted_body FROM mail_queue WHERE recipient=? AND subject=? ORDER BY created_at DESC LIMIT 1",String.class,email,subject);
+        return crypto.decrypt(encrypted,"mail:v1").split("#token=")[1].split("\\s")[0];
+    }
 
     private String registerAndVerify() {
         String email="customer-"+UUID.randomUUID()+"@example.test";
         auth.register(new Register(email,"Test Customer",password));
         assertThatThrownBy(()->auth.login(new Login(email,password))).isInstanceOf(ApiException.class)
             .extracting(e->((ApiException)e).code()).isEqualTo("EMAIL_UNVERIFIED");
-        var body=ArgumentCaptor.forClass(String.class);
-        verify(mail).deliver(eq(email),eq("Verify your SecureBank email"),body.capture());
-        String token=body.getValue().split("#token=")[1].split("\\s")[0];
+        String token=mailToken(email,"Verify your SecureBank email");
         auth.verifyEmail(token);
         assertThatThrownBy(()->auth.verifyEmail(token)).isInstanceOf(ApiException.class);
         return email;
@@ -111,9 +113,7 @@ class AuthenticationIT {
         String email=registerAndVerify();
         var session=auth.login(new Login(email,password));
         auth.requestVerification(email,"RESET_PASSWORD");
-        var body=ArgumentCaptor.forClass(String.class);
-        verify(mail).deliver(eq(email),eq("Reset your SecureBank password"),body.capture());
-        String token=body.getValue().split("#token=")[1].split("\\s")[0];
+        String token=mailToken(email,"Reset your SecureBank password");
         auth.resetPassword(new ResetPassword(token,"A different password 456!"));
         assertThatThrownBy(()->decoder.decode(session.accessToken())).isInstanceOf(JwtException.class);
         assertThatThrownBy(()->auth.login(new Login(email,password))).isInstanceOf(ApiException.class);

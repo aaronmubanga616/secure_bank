@@ -12,6 +12,8 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.util.Map;
+import dev.securebank.events.EventService;
 
 @Service
 public class AccountService {
@@ -22,7 +24,8 @@ public class AccountService {
     private final JdbcTemplate jdbc;
     private final UserRepository users;
     private final AuditService audit;
-    public AccountService(JdbcTemplate jdbc,UserRepository users,AuditService audit) { this.jdbc=jdbc; this.users=users; this.audit=audit; }
+    private final EventService events;
+    public AccountService(JdbcTemplate jdbc,UserRepository users,AuditService audit,EventService events) { this.jdbc=jdbc; this.users=users; this.audit=audit; this.events=events; }
 
     @Transactional
     public AccountView create(UUID owner,Type type) {
@@ -34,6 +37,7 @@ public class AccountService {
         UUID id=UUID.randomUUID();
         jdbc.update("INSERT INTO accounts(id,user_id,type) VALUES (?,?,?)",id,owner,type.name());
         audit.record(owner,"ACCOUNT_CREATED","SUCCESS","accounts/"+id);
+        events.record("AccountCreated",owner,"accounts/"+id,Map.of("type",type.name()));
         return get(owner,id);
     }
 

@@ -10,6 +10,7 @@ class CryptoTest {
         String first = crypto.encrypt("JBSWY3DPEHPK3PXP");
         assertThat(crypto.encrypt("JBSWY3DPEHPK3PXP")).isNotEqualTo(first);
         assertThat(crypto.decrypt(first)).isEqualTo("JBSWY3DPEHPK3PXP");
+        assertThatThrownBy(()->crypto.decrypt(first,"mail:v1")).isInstanceOf(IllegalStateException.class);
         byte[] changed = Base64.getDecoder().decode(first); changed[20] ^= 1;
         assertThatThrownBy(() -> crypto.decrypt(Base64.getEncoder().encodeToString(changed))).isInstanceOf(IllegalStateException.class);
     }

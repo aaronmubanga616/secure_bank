@@ -19,6 +19,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.*;
 import static dev.securebank.transactions.TransactionDtos.*;
+import dev.securebank.events.EventService;
 
 @Service
 public class TransactionService {
@@ -29,8 +30,9 @@ public class TransactionService {
     private final AuditService audit;
     private final LimitService limits;
     private final IdempotencyService idempotency;
-    public TransactionService(JdbcTemplate jdbc,LedgerService ledger,AuditService audit,LimitService limits,IdempotencyService idempotency) {
-        this.jdbc=jdbc; this.ledger=ledger; this.audit=audit; this.limits=limits; this.idempotency=idempotency;
+    private final EventService events;
+    public TransactionService(JdbcTemplate jdbc,LedgerService ledger,AuditService audit,LimitService limits,IdempotencyService idempotency,EventService events) {
+        this.jdbc=jdbc; this.ledger=ledger; this.audit=audit; this.limits=limits; this.idempotency=idempotency; this.events=events;
     }
 
     @Transactional
@@ -59,14 +61,19 @@ public class TransactionService {
         UUID id=UUID.randomUUID();
         jdbc.update("INSERT INTO transactions(id,reference,user_id,type,amount,source_account,destination_account,status,description,idempotency_key,request_hash) VALUES (?,?,?,?,?,?,?,'PROCESSING',?,?,?)",
             id,"SB-"+id,owner,input.type().name(),amount,sourceId,destinationId,description,key,hash);
+        var data=new HashMap<String,Object>(); data.put("transactionId",id.toString()); data.put("amount",amount.toPlainString()); data.put("currency","ZMW"); data.put("type",input.type().name());
+        if (destination!=null) data.put("destinationUser",destination.get("user_id").toString());
+        events.record("TransactionCreated",owner,"transactions/"+id,data);
         String failure=checkRules(owner,input.type(),source,destination,amount);
         if (failure==null) {
             ledger.post(id,sourceId,destinationId,amount);
             jdbc.update("UPDATE transactions SET status='COMPLETED',completed_at=now() WHERE id=?",id);
             audit.record(owner,"TRANSACTION_COMPLETED","SUCCESS","transactions/"+id);
+            events.record("TransactionCompleted",owner,"transactions/"+id,data);
         } else {
             jdbc.update("UPDATE transactions SET status='FAILED',failure_reason=? WHERE id=?",failure,id);
             audit.record(owner,"TRANSACTION_FAILED","FAILURE","transactions/"+id);
+            events.record("TransactionFailed",owner,"transactions/"+id,data);
         }
         return idempotency.response(owner,key,()->get(owner,id));
     }

@@ -2,11 +2,11 @@ package dev.securebank.auth;
 
 import dev.securebank.audit.AuditService;
 import dev.securebank.common.ApiException;
-import dev.securebank.notifications.SecurityMailListener.SecurityMail;
+import dev.securebank.notifications.MailQueue;
+import dev.securebank.events.EventService;
 import dev.securebank.users.User;
 import dev.securebank.users.UserRepository;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -33,7 +33,8 @@ public class AuthService {
     private final Totp totp;
     private final Crypto crypto;
     private final AuditService audit;
-    private final ApplicationEventPublisher events;
+    private final EventService events;
+    private final MailQueue mail;
     private final int accessMinutes;
     private final int refreshDays;
     private final String webUrl;
@@ -41,11 +42,11 @@ public class AuthService {
 
     public AuthService(UserRepository users, JdbcTemplate jdbc, PasswordEncoder passwords, JwtEncoder jwt,
             StringRedisTemplate redis, RateLimiter limiter, Totp totp, Crypto crypto, AuditService audit,
-            ApplicationEventPublisher events, @Value("${securebank.access-token-minutes}") int accessMinutes,
+            EventService events, MailQueue mail, @Value("${securebank.access-token-minutes}") int accessMinutes,
             @Value("${securebank.refresh-token-days}") int refreshDays, @Value("${securebank.web-url}") String webUrl) {
         this.users=users; this.jdbc=jdbc; this.passwords=passwords; this.jwt=jwt; this.redis=redis; this.limiter=limiter;
         this.totp=totp; this.crypto=crypto; this.audit=audit; this.events=events; this.accessMinutes=accessMinutes;
-        this.refreshDays=refreshDays; this.webUrl=webUrl; this.dummyHash=passwords.encode(Crypto.token());
+        this.refreshDays=refreshDays; this.webUrl=webUrl; this.mail=mail; this.dummyHash=passwords.encode(Crypto.token());
     }
 
     @Transactional
@@ -58,6 +59,7 @@ public class AuthService {
         User user=users.saveAndFlush(User.register(email,input.fullName().trim(),passwords.encode(input.password())));
         sendVerification(user,"VERIFY_EMAIL");
         audit.record(user.id(),"USER_REGISTERED","SUCCESS","users/"+user.id());
+        events.record("UserRegistered",user.id(),"users/"+user.id(),Map.of());
     }
 
     @Transactional(noRollbackFor=ApiException.class)
@@ -148,7 +150,7 @@ public class AuthService {
         jdbc.update("UPDATE refresh_tokens SET revoked=true WHERE user_id=?",id);
         jdbc.update("DELETE FROM verification_tokens WHERE user_id=? AND purpose='RESET_PASSWORD'",id);
         audit.record(id,"PASSWORD_RESET","SUCCESS","users/"+id);
-        events.publishEvent(new SecurityMail(user.email(),"SecureBank password changed","Your simulator password was changed. If this was unexpected, contact your simulator administrator."));
+        mail.enqueue(user.email(),"SecureBank password changed","Your simulator password was changed. If this was unexpected, contact your simulator administrator.");
     }
 
     @Transactional
@@ -158,7 +160,7 @@ public class AuthService {
         user.changePassword(passwords.encode(input.newPassword()));
         jdbc.update("UPDATE refresh_tokens SET revoked=true WHERE user_id=?",id);
         audit.record(id,"PASSWORD_CHANGED","SUCCESS","users/"+id);
-        events.publishEvent(new SecurityMail(user.email(),"SecureBank password changed","Your simulator password was changed."));
+        mail.enqueue(user.email(),"SecureBank password changed","Your simulator password was changed.");
     }
 
     public MfaSetup setupMfa(UUID id,String password) {
@@ -244,8 +246,8 @@ public class AuthService {
             Crypto.hash(token),user.id(),purpose,Timestamp.from(Instant.now().plus(purpose.equals("VERIFY_EMAIL")?Duration.ofHours(24):Duration.ofMinutes(30))));
         String path=purpose.equals("VERIFY_EMAIL")?"verify-email":"reset-password";
         // Fragments do not enter browser request logs or Referer headers.
-        events.publishEvent(new SecurityMail(user.email(),purpose.equals("VERIFY_EMAIL")?"Verify your SecureBank email":"Reset your SecureBank password",
-            "SecureBank educational simulator\n\nOpen "+webUrl+"/"+path+"#token="+token+"\n\nIf you did not request this, ignore this email."));
+        mail.enqueue(user.email(),purpose.equals("VERIFY_EMAIL")?"Verify your SecureBank email":"Reset your SecureBank password",
+            "SecureBank educational simulator\n\nOpen "+webUrl+"/"+path+"#token="+token+"\n\nIf you did not request this, ignore this email.");
     }
 
     private UUID consumeToken(String value,String purpose) {
