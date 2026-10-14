@@ -8,7 +8,7 @@ Build a portfolio banking simulator with working customer, mobile, and staff app
 
 1. [x] Repository, shared contracts, three app foundations, Spring Boot, database migrations, and containers.
 2. [x] Registration, verification, password reset, JWT sessions, role checks, TOTP, and rate limiting.
-3. Customer profiles and savings/current accounts with ownership checks.
+3. [x] Customer profiles and savings/current accounts with ownership checks.
 4. Authoritative double-entry journal and database constraints.
 5. Simulated deposits, withdrawals, and internal transfers.
 6. Concurrent spending protection, idempotency, and configurable limits.

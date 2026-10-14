@@ -30,6 +30,17 @@ Local email is captured by [Mailpit](http://localhost:8025). `docker compose up 
 
 ## Errors
 
+## Profiles and accounts
+
+- `GET /users/me` returns the current user's safe profile; `PATCH /users/me` updates `fullName`.
+- `GET /accounts` lists only the current customer's accounts.
+- `POST /accounts` accepts `type: SAVINGS | CURRENT`. This simulator permits one account of each type per customer.
+- `GET /accounts/{id}` requires ownership. Foreign and missing IDs both return 404.
+
+Account operations require CUSTOMER. Staff use explicit staff routes with their own role policies.
+
+## Error format
+
 Errors contain `status`, `code`, `message`, `correlationId`, and optional `fieldErrors`. Unknown resources return 404; unauthorized actions return 403; invalid or expired sessions return 401; rate limits return 429. Unexpected errors never expose stack traces or submitted credentials.
 
 Use the `X-Correlation-ID` response header when diagnosing failures. Supplied identifiers are restricted to 64 letters, digits, or hyphens.

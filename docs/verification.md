@@ -19,3 +19,7 @@ The machine's default Java launcher and the emoji parent directory required a Ja
 Full authentication verification passed eight unit/HTTP tests and five integration tests, without failures or skips. PostgreSQL and Redis were actual isolated containers; outbound email was mocked. Review added a login row lock to serialize session creation with password/security changes; the complete suite passed again after that change.
 
 Known dependency advisories are documented in [security](security/README.md). Native JavaScript exports do not verify on-device biometrics, app-store packaging, or physical device behavior.
+
+## Profiles and accounts
+
+Backend verification passed eight unit/HTTP tests and eight integration tests. Added checks prove owner-scoped account reads, duplicate account-type prevention, and safe profile serialization. Shared client tests passed four checks for exact currency display, malformed values, concurrent refresh, and logout during refresh; TypeScript and ESLint passed.
