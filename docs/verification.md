@@ -31,3 +31,7 @@ Backend verification passed eight unit/HTTP tests and twelve integration tests. 
 ## Money movements
 
 Backend verification passed eight unit/HTTP tests and seventeen integration tests. New coverage exercises deposits, transfers, withdrawals, receipt ownership, filtered incoming history, exact cents, duplicate retries, changed-request conflicts, persistent failed operations, missing idempotency headers, and rejection of additional fractional digits.
+
+## Concurrent spending and limits
+
+Backend verification passed eight unit/HTTP tests and twenty-two integration tests. Two simultaneous K800 withdrawals against K1,000 produced one completion and one decline, leaving K200. Eight simultaneous retries produced one transaction and two journal entries. Eight transfers from two accounts respected one shared daily limit. Tests also verify customer-scoped keys, immutable saved responses, and denial of limit changes by customer/support/compliance roles.

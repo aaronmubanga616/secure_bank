@@ -27,7 +27,11 @@ public class TransactionService {
     private final JdbcTemplate jdbc;
     private final LedgerService ledger;
     private final AuditService audit;
-    public TransactionService(JdbcTemplate jdbc,LedgerService ledger,AuditService audit) { this.jdbc=jdbc; this.ledger=ledger; this.audit=audit; }
+    private final LimitService limits;
+    private final IdempotencyService idempotency;
+    public TransactionService(JdbcTemplate jdbc,LedgerService ledger,AuditService audit,LimitService limits,IdempotencyService idempotency) {
+        this.jdbc=jdbc; this.ledger=ledger; this.audit=audit; this.limits=limits; this.idempotency=idempotency;
+    }
 
     @Transactional
     public TransactionView create(UUID owner,CreateTransaction input,String key) {
@@ -39,7 +43,7 @@ public class TransactionService {
         var existing=jdbc.queryForList("SELECT id,request_hash FROM transactions WHERE user_id=? AND idempotency_key=?",owner,key);
         if (!existing.isEmpty()) {
             if (!hash.equals(existing.getFirst().get("request_hash"))) throw new ApiException(HttpStatus.CONFLICT,"IDEMPOTENCY_CONFLICT","This key was already used for a different request.");
-            return get(owner,(UUID)existing.getFirst().get("id"));
+            return idempotency.response(owner,key,()->get(owner,(UUID)existing.getFirst().get("id")));
         }
 
         Map<String,Object> source=input.sourceAccount()==null?null:ownedAccount(owner,input.sourceAccount());
@@ -64,7 +68,7 @@ public class TransactionService {
             jdbc.update("UPDATE transactions SET status='FAILED',failure_reason=? WHERE id=?",failure,id);
             audit.record(owner,"TRANSACTION_FAILED","FAILURE","transactions/"+id);
         }
-        return get(owner,id);
+        return idempotency.response(owner,key,()->get(owner,id));
     }
 
     private BigDecimal validate(CreateTransaction input,String key) {
@@ -98,8 +102,9 @@ public class TransactionService {
     private String checkRules(UUID owner,Type type,Map<String,Object> source,Map<String,Object> destination,BigDecimal amount) {
         if ((source!=null && (!source.get("status").equals("ACTIVE") || !source.get("user_status").equals("ACTIVE")))
             || (destination!=null && (!destination.get("status").equals("ACTIVE") || !destination.get("user_status").equals("ACTIVE")))) return "ACCOUNT_UNAVAILABLE";
-        if (amount.compareTo(new BigDecimal("100000.00"))>0) return "TRANSACTION_LIMIT";
-        BigDecimal dailyLimit=new BigDecimal(type==Type.WITHDRAWAL?"50000.00":"200000.00");
+        var policy=limits.current();
+        if (amount.compareTo(policy.perTransaction())>0) return "TRANSACTION_LIMIT";
+        BigDecimal dailyLimit=policy.daily(type);
         Instant start=LocalDate.now(ZoneId.of("Africa/Lusaka")).atStartOfDay(ZoneId.of("Africa/Lusaka")).toInstant();
         BigDecimal spent=jdbc.queryForObject("SELECT coalesce(sum(amount),0) FROM transactions WHERE user_id=? AND type=? AND status IN ('COMPLETED','FLAGGED') AND created_at>=?",BigDecimal.class,owner,type.name(),Timestamp.from(start));
         if (spent.add(amount).compareTo(dailyLimit)>0) return "DAILY_LIMIT";

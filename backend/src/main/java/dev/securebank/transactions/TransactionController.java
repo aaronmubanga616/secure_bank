@@ -21,7 +21,8 @@ import static dev.securebank.transactions.TransactionDtos.*;
 public class TransactionController {
     private final TransactionService transactions;
     private final Actor actor;
-    public TransactionController(TransactionService transactions,Actor actor) { this.transactions=transactions; this.actor=actor; }
+    private final LimitService limits;
+    public TransactionController(TransactionService transactions,Actor actor,LimitService limits) { this.transactions=transactions; this.actor=actor; this.limits=limits; }
     @PostMapping @ResponseStatus(HttpStatus.CREATED)
     public TransactionView create(@Valid @RequestBody CreateTransaction input,@RequestHeader("Idempotency-Key") @Size(min=8,max=128) String key) {
         return transactions.create(actor.id(),input,key);
@@ -34,6 +35,6 @@ public class TransactionController {
         return transactions.list(actor.id(),page,size,query,status,from,to,minimum,maximum);
     }
     @GetMapping("/limits") public Map<String,String> limits() {
-        return Map.of("perTransaction","100000.00","dailyTransfer","200000.00","dailyWithdrawal","50000.00","dailyDeposit","200000.00");
+        return limits.current().view();
     }
 }

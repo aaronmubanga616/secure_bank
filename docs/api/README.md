@@ -49,6 +49,8 @@ A valid intent creates a resource with HTTP 201. **Check the returned `status`:*
 
 `GET /accounts/lookup?number=...` confirms an active recipient's display name and account type. Lookup is rate limited. `GET /transactions/limits` exposes current simulated limits. The banking day uses Africa/Lusaka; stored timestamps are UTC instants.
 
+Administrators can `PATCH /admin/limits` with `perTransaction`, `dailyTransfer`, `dailyWithdrawal`, and `dailyDeposit`, each a positive decimal amount up to K1 billion. Customers, support agents, and compliance officers cannot change limits. Saved financial response bodies are immutable and replayed under the original customer/key; `GET /transactions/{id}` reads the current resource state.
+
 ## Error format
 
 Errors contain `status`, `code`, `message`, `correlationId`, and optional `fieldErrors`. Unknown resources return 404; unauthorized actions return 403; invalid or expired sessions return 401; rate limits return 429. Unexpected errors never expose stack traces or submitted credentials.

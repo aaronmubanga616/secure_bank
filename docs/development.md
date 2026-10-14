@@ -11,7 +11,7 @@ Build a portfolio banking simulator with working customer, mobile, and staff app
 3. [x] Customer profiles and savings/current accounts with ownership checks.
 4. [x] Authoritative double-entry journal and database constraints.
 5. [x] Simulated deposits, withdrawals, and internal transfers.
-6. Concurrent spending protection, idempotency, and configurable limits.
+6. [x] Concurrent spending protection, idempotency, and configurable limits.
 7. Beneficiaries and recurring transfers with duplicate prevention.
 8. Transactional event outbox, Kafka delivery, consumers, and dead letters.
 9. Fraud rules, held transfers, and staff investigation.
