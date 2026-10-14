@@ -1,5 +1,8 @@
 name: securebank
 services:
+  mailpit:
+    image: axllent/mailpit:v1.27
+    ports: ["127.0.0.1:1025:1025", "127.0.0.1:8025:8025"]
   postgres:
     image: postgres:17-alpine
     environment:
@@ -61,6 +64,8 @@ services:
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:?Set ENCRYPTION_KEY in .env}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8088,http://localhost:8089}
       API_DOCS_ENABLED: ${API_DOCS_ENABLED:-false}
+      SMTP_HOST: mailpit
+      CUSTOMER_WEB_URL: http://localhost:${GATEWAY_PORT:-8088}
     ports: ["127.0.0.1:8180:8080"]
     depends_on:
       postgres: { condition: service_healthy }

@@ -4,7 +4,7 @@ SecureBank is an educational simulator. Treat local test data as fictional. Do n
 
 ## Foundation
 
-- Private API routes deny access until authentication is configured.
+- Private API routes require a valid, current bearer session; staff routes enforce staff roles on the backend.
 - Password hashing uses BCrypt with a work factor of 12.
 - Backend responses carry security headers and a sanitized correlation identifier.
 - Browser CORS origins are explicitly configured; wildcard credentialed origins are not allowed.
@@ -26,4 +26,18 @@ The initial npm audit on 2026-10-14 identified upstream issues in the Expo/nativ
 
 Do not run `npm audit fix --force` blindly: its proposed Expo 44 downgrade breaks the supported native stack. Builds passing do not resolve these advisories. Recheck the lockfile and upstream packages before releasing native builds or exposing development servers.
 
-Later stages add bearer sessions, refresh rotation, role and ownership enforcement, encrypted TOTP secrets, rate limiting, immutable journals, and security audit events. Their actual behavior and verification are recorded as those stages land.
+## Sessions and MFA
+
+- Only a verified, active user can receive a session. Public registration always assigns the CUSTOMER role.
+- JWTs are signed with HS256 using at least 32 random bytes. Issuer and audience are fixed; other algorithms are rejected.
+- Refresh tokens and email tokens are stored only as SHA-256 hashes. Refresh rotation locks the user before the token row. Reuse revokes the family and increments the user's session version.
+- Access-token validation reads current user state, so logout and security changes take effect immediately.
+- Redis fixed-window counters use an atomic increment-and-expiry script. Security checks fail closed if the counter store is unavailable. Login attempts lock an account's login path temporarily after ten attempts in fifteen minutes.
+- TOTP uses the RFC 6238 SHA-1 algorithm with a 30-second step and one step of clock tolerance. AES-256-GCM encrypts enrolled secrets. Temporary setup state is also encrypted, with a ten-minute expiry.
+- A TOTP step cannot be used twice. Recovery codes are random, hashed, shown once, and consumed transactionally.
+- MFA changes require recent password knowledge. Disabling MFA also requires a valid TOTP or recovery code. Password resets do not disable MFA.
+- Security emails are delivered through an abstraction after database commit. An unavailable SMTP server requires requesting a new link; durable event retries are added with the outbox stage.
+
+Automated integration checks cover verification-token reuse, refresh replay, logout invalidation, MFA replay, recovery-code reuse, login lockout, and password-reset invalidation using PostgreSQL and Redis containers.
+
+Later stages add account ownership checks, immutable journals, and fraud investigation. Their actual behavior and verification are recorded as those stages land.

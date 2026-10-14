@@ -6,6 +6,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.test.context.support.WithMockUser;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -13,6 +16,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import(SecurityConfig.class)
 class ApiSecurityTest {
     @Autowired MockMvc mvc;
+    @MockitoBean JwtDecoder decoder;
 
     @Test void publicMetadataHasSecurityAndCorrelationHeaders() throws Exception {
         mvc.perform(get("/api/v1/platform")).andExpect(status().isOk())
@@ -22,7 +26,13 @@ class ApiSecurityTest {
     }
 
     @Test void unconfiguredRoutesAreDeniedByDefault() throws Exception {
-        mvc.perform(get("/api/v1/accounts")).andExpect(status().isForbidden());
+        mvc.perform(get("/api/v1/accounts")).andExpect(status().isUnauthorized())
+            .andExpect(jsonPath("$.code").value("UNAUTHENTICATED"));
+    }
+
+    @Test @WithMockUser(roles="CUSTOMER")
+    void customerCannotReadStaffResources() throws Exception {
+        mvc.perform(get("/api/v1/admin/users")).andExpect(status().isForbidden());
     }
 
     @Test void rejectsUntrustedCorsOrigins() throws Exception {
