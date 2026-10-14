@@ -16,7 +16,8 @@ import java.util.UUID;
 @Service
 public class AccountService {
     public enum Type { SAVINGS, CURRENT }
-    public record AccountView(UUID id,String accountNumber,String type,String currency,String status,Instant createdAt) {}
+    public record AccountView(UUID id,String accountNumber,String type,String currency,String status,String balance,Instant createdAt) {}
+    private static final String SELECT="SELECT a.*,b.balance FROM accounts a JOIN account_balances b ON b.account_id=a.id";
     private final JdbcTemplate jdbc;
     private final UserRepository users;
     private final AuditService audit;
@@ -30,23 +31,23 @@ public class AccountService {
         Integer count=jdbc.queryForObject("SELECT count(*) FROM accounts WHERE user_id=? AND type=?",Integer.class,owner,type.name());
         if (count!=null && count>0) throw new ApiException(HttpStatus.CONFLICT,"ACCOUNT_EXISTS","You already have this type of account.");
         UUID id=UUID.randomUUID();
-        AccountView account=jdbc.queryForObject("INSERT INTO accounts(id,user_id,type) VALUES (?,?,?) RETURNING *",AccountService::view,id,owner,type.name());
+        jdbc.update("INSERT INTO accounts(id,user_id,type) VALUES (?,?,?)",id,owner,type.name());
         audit.record(owner,"ACCOUNT_CREATED","SUCCESS","accounts/"+id);
-        return account;
+        return get(owner,id);
     }
 
     public List<AccountView> list(UUID owner) {
-        return jdbc.query("SELECT * FROM accounts WHERE user_id=? ORDER BY created_at,id",AccountService::view,owner);
+        return jdbc.query(SELECT+" WHERE a.user_id=? ORDER BY a.created_at,a.id",AccountService::view,owner);
     }
 
     public AccountView get(UUID owner,UUID id) {
-        var accounts=jdbc.query("SELECT * FROM accounts WHERE user_id=? AND id=?",AccountService::view,owner,id);
+        var accounts=jdbc.query(SELECT+" WHERE a.user_id=? AND a.id=?",AccountService::view,owner,id);
         if (accounts.isEmpty()) throw ApiException.notFound();
         return accounts.getFirst();
     }
 
     private static AccountView view(ResultSet row,int index) throws SQLException {
         return new AccountView(row.getObject("id",UUID.class),row.getString("account_number"),row.getString("type"),
-            row.getString("currency"),row.getString("status"),row.getTimestamp("created_at").toInstant());
+            row.getString("currency"),row.getString("status"),row.getBigDecimal("balance").setScale(2).toPlainString(),row.getTimestamp("created_at").toInstant());
     }
 }

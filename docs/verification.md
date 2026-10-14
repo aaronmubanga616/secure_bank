@@ -23,3 +23,7 @@ Known dependency advisories are documented in [security](security/README.md). Na
 ## Profiles and accounts
 
 Backend verification passed eight unit/HTTP tests and eight integration tests. Added checks prove owner-scoped account reads, duplicate account-type prevention, and safe profile serialization. Shared client tests passed four checks for exact currency display, malformed values, concurrent refresh, and logout during refresh; TypeScript and ESLint passed.
+
+## Ledger
+
+Backend verification passed eight unit/HTTP tests and twelve integration tests. Ledger tests verify balanced transfers, exact derived balances, immutable entries and completed transactions, rejection of incomplete journals at commit, and atomic rollback of an overdraft. The tests use PostgreSQL's actual deferred constraints.
