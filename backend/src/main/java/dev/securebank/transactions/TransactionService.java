@@ -20,6 +20,7 @@ import java.time.ZoneId;
 import java.util.*;
 import static dev.securebank.transactions.TransactionDtos.*;
 import dev.securebank.events.EventService;
+import dev.securebank.fraud.RiskService;
 
 @Service
 public class TransactionService {
@@ -31,8 +32,9 @@ public class TransactionService {
     private final LimitService limits;
     private final IdempotencyService idempotency;
     private final EventService events;
-    public TransactionService(JdbcTemplate jdbc,LedgerService ledger,AuditService audit,LimitService limits,IdempotencyService idempotency,EventService events) {
-        this.jdbc=jdbc; this.ledger=ledger; this.audit=audit; this.limits=limits; this.idempotency=idempotency; this.events=events;
+    private final RiskService risk;
+    public TransactionService(JdbcTemplate jdbc,LedgerService ledger,AuditService audit,LimitService limits,IdempotencyService idempotency,EventService events,RiskService risk) {
+        this.jdbc=jdbc; this.ledger=ledger; this.audit=audit; this.limits=limits; this.idempotency=idempotency; this.events=events; this.risk=risk;
     }
 
     @Transactional
@@ -65,17 +67,50 @@ public class TransactionService {
         if (destination!=null) data.put("destinationUser",destination.get("user_id").toString());
         events.record("TransactionCreated",owner,"transactions/"+id,data);
         String failure=checkRules(owner,input.type(),source,destination,amount);
-        if (failure==null) {
+        var decision=input.type()==Type.TRANSFER && failure==null?risk.assess(owner,destinationId,amount):new RiskService.Decision(0,false,List.of());
+        jdbc.update("UPDATE transactions SET risk_score=? WHERE id=?",decision.score(),id);
+        if (failure==null && decision.hold()) {
+            jdbc.update("UPDATE transactions SET status='FLAGGED' WHERE id=?",id);
+            risk.alert(owner,id,decision);
+            audit.record(owner,"TRANSACTION_FLAGGED","REVIEW","transactions/"+id);
+            events.record("TransactionFlagged",owner,"transactions/"+id,data);
+        } else if (failure==null) {
             ledger.post(id,sourceId,destinationId,amount);
             jdbc.update("UPDATE transactions SET status='COMPLETED',completed_at=now() WHERE id=?",id);
             audit.record(owner,"TRANSACTION_COMPLETED","SUCCESS","transactions/"+id);
             events.record("TransactionCompleted",owner,"transactions/"+id,data);
+            risk.alert(owner,id,decision);
         } else {
             jdbc.update("UPDATE transactions SET status='FAILED',failure_reason=? WHERE id=?",failure,id);
             audit.record(owner,"TRANSACTION_FAILED","FAILURE","transactions/"+id);
             events.record("TransactionFailed",owner,"transactions/"+id,data);
         }
         return idempotency.response(owner,key,()->get(owner,id));
+    }
+
+    @Transactional
+    public void reviewHeld(UUID id,boolean approve) {
+        var initial=jdbc.queryForList("SELECT * FROM transactions WHERE id=?",id);
+        if(initial.isEmpty()) throw ApiException.notFound();
+        var row=initial.getFirst(); UUID owner=(UUID)row.get("user_id");
+        UUID source=(UUID)row.get("source_account"),destination=(UUID)row.get("destination_account");
+        lockParticipants(owner,source,destination);
+        String status=jdbc.queryForObject("SELECT status FROM transactions WHERE id=? FOR UPDATE",String.class,id);
+        if(!"FLAGGED".equals(status)) return;
+        ledger.lockAccounts(source,destination);
+        jdbc.update("UPDATE transactions SET status='PROCESSING' WHERE id=?",id);
+        var target=jdbc.queryForMap("SELECT a.*,u.status AS user_status FROM accounts a JOIN users u ON u.id=a.user_id WHERE a.id=?",destination);
+        BigDecimal amount=(BigDecimal)row.get("amount");
+        String failure=approve?checkRules(owner,Type.TRANSFER,ownedAccount(owner,source),target,amount):"FRAUD_CONFIRMED";
+        var data=Map.<String,Object>of("transactionId",id.toString(),"amount",amount.toPlainString(),"currency","ZMW","type","TRANSFER","destinationUser",target.get("user_id").toString());
+        if(failure==null) {
+            ledger.post(id,source,destination,amount);
+            jdbc.update("UPDATE transactions SET status='COMPLETED',completed_at=now() WHERE id=?",id);
+            events.record("TransactionCompleted",owner,"transactions/"+id,data);
+        } else {
+            jdbc.update("UPDATE transactions SET status='FAILED',failure_reason=? WHERE id=?",failure,id);
+            events.record("TransactionFailed",owner,"transactions/"+id,data);
+        }
     }
 
     private BigDecimal validate(CreateTransaction input,String key) {

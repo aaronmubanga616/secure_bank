@@ -239,6 +239,11 @@ public class AuthService {
         return new AuthResult(access,refresh,UserView.of(user),false,null);
     }
 
+    @Transactional public void rememberDevice(AuthResult result,String device) {
+        if(result.user()==null || device==null || !device.matches("[A-Za-z0-9_-]{16,100}")) return;
+        jdbc.update("INSERT INTO user_devices(user_id,device_hash) VALUES (?,?) ON CONFLICT(user_id,device_hash) DO UPDATE SET last_seen_at=now()",result.user().id(),Crypto.hash(device));
+    }
+
     private void sendVerification(User user,String purpose) {
         String token=Crypto.token();
         jdbc.update("DELETE FROM verification_tokens WHERE user_id=? AND purpose=?",user.id(),purpose);

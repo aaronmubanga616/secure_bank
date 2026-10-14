@@ -39,3 +39,8 @@ Backend verification passed eight unit/HTTP tests and twenty-two integration tes
 ## Recipients and schedules
 
 Backend verification passed ten unit/HTTP tests and twenty-seven integration tests. New tests cover month-end/leap-year recurrence, recipient and schedule ownership, password confirmation, cancellation on recipient deletion, two simultaneous workers, and recovery after money committed before schedule bookkeeping. A focused schedule verification also runs after improving lookups for older schedule records.
+
+## Events and fraud
+
+Backend verification passed ten unit/HTTP tests and thirty-one integration tests after the event stage, including a real Kafka container, poison-message delivery, duplicate suppression, atomic rollback, and encrypted mail retries. A focused fraud/payment run passed twelve integration tests. Additional focused fraud and statement verification passed four integration tests; held transfers have no journal until approval and cannot be released twice.
+

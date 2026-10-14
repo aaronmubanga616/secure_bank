@@ -21,7 +21,7 @@ public class AuthController {
     @PostMapping("/register") @ResponseStatus(HttpStatus.ACCEPTED)
     public Map<String,String> register(@Valid @RequestBody Register input,HttpServletRequest request) { limit(request); auth.register(input); return accepted(); }
     @PostMapping("/login")
-    public AuthResult login(@Valid @RequestBody Login input,HttpServletRequest request) { limit(request); return auth.login(input); }
+    public AuthResult login(@Valid @RequestBody Login input,HttpServletRequest request) { limit(request); var result=auth.login(input); auth.rememberDevice(result,request.getHeader("X-Device-ID")); return result; }
     @PostMapping("/refresh")
     public AuthResult refresh(@Valid @RequestBody RefreshRequest input,HttpServletRequest request) { limit(request); return auth.refresh(input.refreshToken()); }
     @PostMapping("/logout") @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -37,7 +37,7 @@ public class AuthController {
     @PostMapping("/change-password") @ResponseStatus(HttpStatus.NO_CONTENT)
     public void changePassword(@Valid @RequestBody ChangePassword input) { auth.changePassword(actor.id(),input); }
     @PostMapping("/mfa/verify")
-    public AuthResult verifyMfa(@Valid @RequestBody MfaVerify input,HttpServletRequest request) { limit(request); return auth.verifyMfa(input); }
+    public AuthResult verifyMfa(@Valid @RequestBody MfaVerify input,HttpServletRequest request) { limit(request); var result=auth.verifyMfa(input); auth.rememberDevice(result,request.getHeader("X-Device-ID")); return result; }
     @PostMapping("/mfa/setup")
     public MfaSetup setup(@Valid @RequestBody PasswordRequest input) { return auth.setupMfa(actor.id(),input.password()); }
     @PostMapping("/mfa/confirm")

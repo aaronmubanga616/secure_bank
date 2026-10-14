@@ -1,0 +1,11 @@
+# Events and fraud review
+
+Financial changes, audit records, email jobs, and domain events commit in the same PostgreSQL transaction. An outbox worker publishes committed events to Kafka, keyed by customer. A crash after broker acknowledgement may publish twice; each consumer claims the event in its own database transaction with a unique consumer/event key. Notification and audit projections are therefore idempotent. Three retries precede dead-letter delivery. Outbox failures back off without discarding financial events.
+
+Email bodies are encrypted with AES-GCM using a separate associated-data purpose from authenticator secrets. The local SMTP worker retries five times, then parks the job for investigation. SMTP acknowledgement followed by a process crash can result in a duplicate email. Verification and reset tokens remain single-use even in duplicate messages.
+
+Transfers score large amounts (45), new recipients (30), rapid transfers (40), repeated failed sign-ins (25), newly observed devices after an existing device (20), and unusual local hours (10). Scores cap at 100. Defaults classify 0–30 as low, 31–70 as medium, and 71–100 as high. Thresholds are stored in `fraud_rules`; the staff configuration endpoint controls changes. Device identifiers are hashed hints, never authentication factors.
+
+High scores place a transfer in FLAGGED with no journal entries. Medium scores create an investigation while permitting a valid transfer. Kafka independently checks completed transfer activity and can create an investigation; it cannot rewrite the ledger. Staff may resolve, mark a false positive, or confirm fraud, always with a recorded reason. Approval of a held transfer rechecks customer/account state, funds, and daily limits under the normal locks. Funds are not reserved during review, so approval can decline. Confirmation rejects a held transfer; a posted transfer requires a separately designed reversal and is never erased.
+
+Idempotency returns the original submission response even after review; fetch the receipt to obtain the current status. Held transfers count toward the submitting day's limits. The review records the investigator, note, outcome, and time. SUPPORT_AGENT cannot access fraud investigations.

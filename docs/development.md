@@ -13,8 +13,8 @@ Build a portfolio banking simulator with working customer, mobile, and staff app
 5. [x] Simulated deposits, withdrawals, and internal transfers.
 6. [x] Concurrent spending protection, idempotency, and configurable limits.
 7. [x] Beneficiaries and recurring transfers with duplicate prevention.
-8. Transactional event outbox, Kafka delivery, consumers, and dead letters.
-9. Fraud rules, held transfers, and staff investigation.
+8. [x] Transactional event outbox, Kafka delivery, consumers, and dead letters.
+9. [x] Fraud rules, held transfers, and staff investigation.
 10. Notifications and downloadable PDF statements.
 11. Customer web flows and responsive dashboard.
 12. Native customer flows and secure device sessions.
