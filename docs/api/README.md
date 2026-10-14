@@ -28,8 +28,6 @@ Tokens are returned in JSON and are not cookies. Browser clients keep them in me
 
 Local email is captured by [Mailpit](http://localhost:8025). `docker compose up -d mailpit` starts the inbox. Security links carry tokens in a URL fragment so browser request logs and Referer headers do not receive them. Native users can copy the token into their verification/reset screen.
 
-## Errors
-
 ## Profiles and accounts
 
 - `GET /users/me` returns the current user's safe profile; `PATCH /users/me` updates `fullName`.
@@ -38,6 +36,18 @@ Local email is captured by [Mailpit](http://localhost:8025). `docker compose up 
 - `GET /accounts/{id}` requires ownership. Foreign and missing IDs both return 404.
 
 Account operations require CUSTOMER. Staff use explicit staff routes with their own role policies.
+
+## Financial operations
+
+`POST /transactions` creates a simulated transaction resource. Supply an `Idempotency-Key` header of 8-128 letters, digits, periods, underscores, colons, or hyphens. Use the same key when retrying the same intent. A different payload under the same key returns 409.
+
+The body contains `type`, `amount` as a decimal string, and `description`. TRANSFER also needs `sourceAccount` and `destinationAccountNumber`; WITHDRAWAL needs only `sourceAccount`; DEPOSIT needs only the customer's own `destinationAccountNumber`. All amounts are ZMW and positive, with at most two decimal places.
+
+A valid intent creates a resource with HTTP 201. **Check the returned `status`:** COMPLETED moves money; FAILED records a decline and moves none; FLAGGED means awaiting review and moves none. A failed intent remains failed when retried, even if the customer later adds funds. Correcting or trying a new intent requires a new key.
+
+`GET /transactions` supports `page`, `size` (maximum 100), `query`, `status`, `from` (inclusive ISO timestamp), `to` (exclusive ISO timestamp), `minimum`, and `maximum`. Results include only transactions initiated by or involving the current customer. `GET /transactions/{id}` applies the same rule. Foreign account numbers in receipts are masked.
+
+`GET /accounts/lookup?number=...` confirms an active recipient's display name and account type. Lookup is rate limited. `GET /transactions/limits` exposes current simulated limits. The banking day uses Africa/Lusaka; stored timestamps are UTC instants.
 
 ## Error format
 

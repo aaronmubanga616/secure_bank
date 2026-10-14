@@ -27,3 +27,7 @@ Backend verification passed eight unit/HTTP tests and eight integration tests. A
 ## Ledger
 
 Backend verification passed eight unit/HTTP tests and twelve integration tests. Ledger tests verify balanced transfers, exact derived balances, immutable entries and completed transactions, rejection of incomplete journals at commit, and atomic rollback of an overdraft. The tests use PostgreSQL's actual deferred constraints.
+
+## Money movements
+
+Backend verification passed eight unit/HTTP tests and seventeen integration tests. New coverage exercises deposits, transfers, withdrawals, receipt ownership, filtered incoming history, exact cents, duplicate retries, changed-request conflicts, persistent failed operations, missing idempotency headers, and rejection of additional fractional digits.

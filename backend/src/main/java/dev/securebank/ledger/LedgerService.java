@@ -22,6 +22,13 @@ public class LedgerService {
     }
 
     @Transactional(propagation=Propagation.MANDATORY)
+    public void lockAccounts(UUID source,UUID destination) {
+        UUID debit=source==null?SIMULATED_CASH:ledgerAccount(source);
+        UUID credit=destination==null?SIMULATED_CASH:ledgerAccount(destination);
+        jdbc.queryForList("SELECT id FROM ledger_accounts WHERE id IN (?,?) ORDER BY id FOR UPDATE",debit,credit);
+    }
+
+    @Transactional(propagation=Propagation.MANDATORY)
     public void post(UUID transaction,UUID source,UUID destination,BigDecimal requestedAmount) {
         BigDecimal amount;
         try { amount=requestedAmount.setScale(2,RoundingMode.UNNECESSARY); }

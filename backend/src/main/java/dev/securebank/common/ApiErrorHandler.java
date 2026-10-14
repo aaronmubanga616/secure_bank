@@ -35,6 +35,8 @@ public class ApiErrorHandler {
 
     @ExceptionHandler({org.springframework.http.converter.HttpMessageNotReadableException.class,
             org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class,
+            org.springframework.web.bind.ServletRequestBindingException.class,
+            org.springframework.web.method.annotation.HandlerMethodValidationException.class,
             jakarta.validation.ConstraintViolationException.class})
     ResponseEntity<?> malformed(Exception error, HttpServletRequest request) {
         return ResponseEntity.badRequest().body(body(400, "INVALID_REQUEST", "The request is not valid.", request));

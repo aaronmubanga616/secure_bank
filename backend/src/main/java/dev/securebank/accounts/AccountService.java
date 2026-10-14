@@ -16,6 +16,7 @@ import java.util.UUID;
 @Service
 public class AccountService {
     public enum Type { SAVINGS, CURRENT }
+    public record Recipient(String accountNumber,String fullName,String type) {}
     public record AccountView(UUID id,String accountNumber,String type,String currency,String status,String balance,Instant createdAt) {}
     private static final String SELECT="SELECT a.*,b.balance FROM accounts a JOIN account_balances b ON b.account_id=a.id";
     private final JdbcTemplate jdbc;
@@ -44,6 +45,12 @@ public class AccountService {
         var accounts=jdbc.query(SELECT+" WHERE a.user_id=? AND a.id=?",AccountService::view,owner,id);
         if (accounts.isEmpty()) throw ApiException.notFound();
         return accounts.getFirst();
+    }
+
+    public Recipient lookup(String number) {
+        var rows=jdbc.query("SELECT a.account_number,u.full_name,a.type FROM accounts a JOIN users u ON u.id=a.user_id WHERE a.account_number=? AND a.status='ACTIVE' AND u.status='ACTIVE'",
+            (r,n)->new Recipient(r.getString(1),r.getString(2),r.getString(3)),number.trim().toUpperCase(java.util.Locale.ROOT));
+        if (rows.isEmpty()) throw ApiException.notFound(); return rows.getFirst();
     }
 
     private static AccountView view(ResultSet row,int index) throws SQLException {
