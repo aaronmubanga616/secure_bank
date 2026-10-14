@@ -17,7 +17,7 @@ Build a portfolio banking simulator with working customer, mobile, and staff app
 9. [x] Fraud rules, held transfers, and staff investigation.
 10. [x] Notifications and downloadable PDF statements.
 11. [x] Customer web flows and responsive dashboard.
-12. Native customer flows and secure device sessions.
+12. [x] Native customer flows and secure device sessions.
 13. Staff dashboard and backend role enforcement.
 14. Security review and hardening.
 15. Metrics, health checks, and monitoring dashboards.

@@ -52,3 +52,7 @@ Two live Playwright journeys passed against the running API, PostgreSQL, Redis, 
 
 Shared-client tests passed four checks. Browser tokens stay in memory; reloading requires sign-in. The only persisted browser value is a random, non-secret device hint.
 
+## Native customer app
+
+Android and iOS Hermes exports passed with the complete native routes. Expo reports compatible dependencies. Six JavaScript tests passed, including two native session tests covering refresh-only persistence, the authorization gate while locked, and logout during an in-flight unlock. Type checks and ESLint passed. No Android/iOS native build or physical biometric test has been performed on this Windows machine.
+
