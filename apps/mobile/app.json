@@ -1,0 +1,9 @@
+{
+  "expo": {
+    "name": "SecureBank", "slug": "securebank", "scheme": "securebank", "version": "0.1.0", "orientation": "portrait", "userInterfaceStyle": "light",
+    "ios": { "bundleIdentifier": "dev.securebank.mobile", "supportsTablet": true },
+    "android": { "package": "dev.securebank.mobile" },
+    "plugins": ["expo-router", "expo-secure-store", ["expo-local-authentication", { "faceIDPermission": "Allow SecureBank to unlock your local session using Face ID." }]],
+    "experiments": { "typedRoutes": true }
+  }
+}
