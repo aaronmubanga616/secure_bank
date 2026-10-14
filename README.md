@@ -39,6 +39,8 @@ npm run dev:mobile    # Expo development server
 
 For the complete container stack, use `docker compose up --build`. The customer gateway is at `http://localhost:8088`; staff use `http://localhost:8089`.
 
+The API uses `http://localhost:8180` when run locally or exposed by Compose.
+
 `scripts/setup-env.mjs` generates random local secrets and preserves an existing `.env`. Never commit this file. Set the mobile app's `EXPO_PUBLIC_API_URL` to your computer's LAN address; `localhost` on a physical phone refers to the phone.
 
 ### Checks
