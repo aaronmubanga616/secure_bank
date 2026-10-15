@@ -1,5 +1,6 @@
 import { beforeEach, expect, test, vi } from 'vitest';
 import type { Session } from '@securebank/contracts';
+import * as SecureStore from 'expo-secure-store';
 const mocks = vi.hoisted(() => ({ storage: new Map<string, string>(), writes: vi.fn() }));
 vi.mock('expo-secure-store', () => ({
   WHEN_UNLOCKED_THIS_DEVICE_ONLY: 1,
@@ -72,6 +73,24 @@ test('logging out while device unlock is refreshing cannot restore the session',
   await signOut();
   resolve({ data: session });
   await expect(unlocking).rejects.toThrow('session changed');
+  expect(sessionStore.read()).toBeNull();
+  expect(mocks.storage.size).toBe(0);
+});
+test('logging out during biometric enrollment removes the pending protected credential', async () => {
+  await sessionStore.write(session);
+  let resume!: (value: string | null) => void;
+  vi.mocked(SecureStore.getItemAsync).mockImplementationOnce(
+    () =>
+      new Promise((done) => {
+        resume = done;
+      }),
+  );
+  const enrolling = enableBiometrics();
+  await vi.waitFor(() => expect(resume).toBeTypeOf('function'));
+  const loggingOut = signOut();
+  resume(session.refreshToken);
+  await expect(enrolling).rejects.toThrow('session changed');
+  await loggingOut;
   expect(sessionStore.read()).toBeNull();
   expect(mocks.storage.size).toBe(0);
 });

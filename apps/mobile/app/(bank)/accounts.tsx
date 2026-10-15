@@ -11,6 +11,8 @@ import {
   ErrorState,
   useData,
   styles,
+  Button,
+  go,
 } from '../../src/ui';
 export default function Accounts() {
   const query = useData<Account[]>('/accounts');
@@ -27,6 +29,11 @@ export default function Accounts() {
             <Copy>
               {account.accountNumber} · {account.status}
             </Copy>
+            <Button
+              secondary
+              title="Account details"
+              onPress={() => go('/account?id=' + account.id)}
+            />
           </Card>
         ))
       )}

@@ -56,8 +56,11 @@ Shared-client tests passed four checks. Browser tokens stay in memory; reloading
 
 Android and iOS Hermes exports passed with the complete native routes. Expo reports compatible dependencies. Six JavaScript tests passed, including two native session tests covering refresh-only persistence, the authorization gate while locked, and logout during an in-flight unlock. Type checks and ESLint passed. No Android/iOS native build or physical biometric test has been performed on this Windows machine.
 
-
 ## Staff operations
 
 The complete backend suite passed 50 tests (10 unit/HTTP and 40 integration), without failures or skips. Later focused verification passed ten integration checks covering account-scoped history, staff roles/MFA, suspension, immutable audit history, private response caching, Unicode password limits, metrics credentials, and request throttling. The live staff browser journey passed authenticator enrollment/sign-in, release of a held transfer, account freezing, and audit lookup. Both browser production builds and type/lint checks passed.
+
+## Client hardening
+
+Ten JavaScript tests passed after adding exact input normalization, inclusive Lusaka date boundaries, stable retry keys across unchanged review edits, fresh keys after acknowledged payments, and cancellation of biometric enrollment on logout. TypeScript and lint passed. The patched UUID API check passed. Dependency review reports three explicitly documented upstream advisories; new advisories or changed affected versions fail the baseline check. The bounded local payment load check also passed; final container measurements are recorded with the testing guide.
 

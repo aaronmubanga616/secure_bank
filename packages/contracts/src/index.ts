@@ -50,6 +50,8 @@ export interface SessionStore {
 }
 
 export { createApiClient, errorMessage } from './client';
+export { lusakaRange } from './dates';
+export { normalizeAmount, paymentKeyKeeper, type PaymentDraft } from './payments';
 
 export interface Page<T> {
   content: T[];

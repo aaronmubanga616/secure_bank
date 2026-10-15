@@ -1,11 +1,14 @@
 import { useRef, useState } from 'react';
 import { Text } from 'react-native';
 import * as Crypto from 'expo-crypto';
+import { router, useLocalSearchParams } from 'expo-router';
 import {
   type Account,
   type Beneficiary,
   type Transaction,
   formatMoney,
+  normalizeAmount,
+  paymentKeyKeeper,
 } from '@securebank/contracts';
 import { api } from '../../src/session';
 import {
@@ -28,9 +31,16 @@ interface Draft {
   description: string;
 }
 export default function Move() {
+  const params = useLocalSearchParams<{ type?: string }>();
+  const type = ['TRANSFER', 'DEPOSIT', 'WITHDRAWAL'].includes(params.type ?? '')
+    ? params.type!
+    : 'TRANSFER';
+  const [keyFor] = useState(() => paymentKeyKeeper(Crypto.randomUUID));
+  return <MoveFlow key={type} type={type} keyFor={keyFor} />;
+}
+function MoveFlow({ type, keyFor }: { type: string; keyFor: ReturnType<typeof paymentKeyKeeper> }) {
   const accounts = useData<Account[]>('/accounts');
   const recipients = useData<Beneficiary[]>('/beneficiaries');
-  const [type, setType] = useState('TRANSFER');
   const [draft, setDraft] = useState<Draft | null>(null);
   const [recipient, setRecipient] = useState('');
   const key = useRef('');
@@ -78,6 +88,8 @@ export default function Move() {
                 const { data } = await api.post<Transaction>('/transactions', draft, {
                   headers: { 'Idempotency-Key': key.current },
                 });
+                keyFor.completed(draft);
+                setDraft(null);
                 go('/receipt?id=' + data.id);
               }}
             >
@@ -100,7 +112,7 @@ export default function Move() {
                 key={value}
                 secondary={type !== value}
                 title={label}
-                onPress={() => setType(value)}
+                onPress={() => router.setParams({ type: value })}
               />
             ))}
             <Form
@@ -108,11 +120,7 @@ export default function Move() {
               fields={fields}
               submit="Review transaction"
               action={async (values) => {
-                if (!/^\d+(\.\d{1,2})?$/.test(values.amount))
-                  throw new Error('Use a positive amount with at most two decimal places.');
-                const amount = values.amount.includes('.')
-                  ? values.amount.padEnd(values.amount.indexOf('.') + 3, '0')
-                  : values.amount + '.00';
+                const amount = normalizeAmount(values.amount);
                 let destination: string | null = null;
                 let label = '';
                 if (type === 'DEPOSIT') {
@@ -129,15 +137,16 @@ export default function Move() {
                   destination = data.accountNumber;
                   label = data.fullName + ' · ' + data.accountNumber;
                 }
-                key.current = Crypto.randomUUID();
                 setRecipient(label);
-                setDraft({
+                const next = {
                   type,
                   sourceAccount: type === 'DEPOSIT' ? null : values.account,
                   destinationAccountNumber: destination,
                   amount,
                   description: values.description,
-                });
+                };
+                key.current = keyFor(next);
+                setDraft(next);
               }}
             />
             {type === 'TRANSFER' &&

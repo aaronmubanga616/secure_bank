@@ -3,6 +3,7 @@ import {
   type Account,
   type Page,
   type Transaction,
+  type Notification,
   formatMoney,
   sumMoney,
 } from '@securebank/contracts';
@@ -23,12 +24,13 @@ export default function Home() {
   const { session } = useSession();
   const accounts = useData<Account[]>('/accounts');
   const recent = useData<Page<Transaction>>('/transactions', { size: 5 });
+  const notices = useData<Page<Notification>>('/notifications', { size: 5 });
   return (
     <Screen
       title={`Hello, ${session?.user.fullName.split(' ')[0]}.`}
       subtitle="A fresh perspective on your everyday."
     >
-      <ErrorState error={accounts.error ?? recent.error} />
+      <ErrorState error={accounts.error ?? recent.error ?? notices.error} />
       <Card dark>
         <Text style={{ color: '#b5c89f', fontSize: 10, letterSpacing: 2 }}>
           TOTAL AVAILABLE BALANCE
@@ -51,6 +53,38 @@ export default function Home() {
           <Button secondary title="Your inbox" onPress={() => go('/notifications')} />
         </View>
       </View>
+      <View style={{ flexDirection: 'row', gap: 12 }}>
+        <View style={{ flex: 1 }}>
+          <Button secondary title="Add funds" onPress={() => go('/move?type=DEPOSIT')} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Button secondary title="Withdraw" onPress={() => go('/move?type=WITHDRAWAL')} />
+        </View>
+      </View>
+      {accounts.data?.map((account) => (
+        <Card key={account.id}>
+          <Heading>{account.type === 'SAVINGS' ? 'Your savings' : 'Everyday current'}</Heading>
+          <Text style={styles.amount}>{formatMoney(account.balance)}</Text>
+          <Copy>
+            {account.accountNumber} · {account.status}
+          </Copy>
+          <Button
+            secondary
+            title="Account details"
+            onPress={() => go('/account?id=' + account.id)}
+          />
+        </Card>
+      ))}
+      {notices.data?.content
+        .filter((notice) => notice.category === 'SECURITY' && !notice.read)
+        .slice(0, 2)
+        .map((notice) => (
+          <Card key={notice.id}>
+            <Heading>{notice.title}</Heading>
+            <Copy>{notice.message}</Copy>
+            <Button secondary title="Review security update" onPress={() => go('/notifications')} />
+          </Card>
+        ))}
       <Card>
         <Heading>Recent activity</Heading>
         {recent.isPending ? (

@@ -19,7 +19,7 @@ Build a portfolio banking simulator with working customer, mobile, and staff app
 11. [x] Customer web flows and responsive dashboard.
 12. [x] Native customer flows and secure device sessions.
 13. [x] Staff dashboard and backend role enforcement.
-14. Security review and hardening.
+14. [x] Security review and hardening.
 15. Metrics, health checks, and monitoring dashboards.
 16. Automated banking, authorization, concurrency, and frontend checks.
 17. CI, operations documentation, and final verification.

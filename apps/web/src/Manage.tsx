@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useParams, Link } from 'react-router-dom';
 import {
   api,
   useSession,
@@ -23,7 +24,8 @@ import {
   type User,
 } from '@securebank/contracts';
 import { useData } from './data';
-import { AccountCard, QueryError } from './App';
+import { AccountCard, QueryError, TransactionTable } from './App';
+import type { Transaction } from '@securebank/contracts';
 
 export function Accounts() {
   const query = useData<Account[]>('/accounts');
@@ -70,6 +72,75 @@ export function Accounts() {
           {query.data?.length === 2 && <Notice>You have both account types.</Notice>}
         </section>
       </div>
+    </>
+  );
+}
+export function AccountDetail() {
+  const { id } = useParams();
+  const [page, setPage] = useState(0);
+  const account = useData<Account>(`/accounts/${id}`);
+  const history = useData<Page<Transaction>>(`/accounts/${id}/transactions`, { page, size: 15 });
+  return (
+    <>
+      <Heading
+        eyebrow="YOUR ACCOUNT, IN DETAIL"
+        title={account.data?.type === 'SAVINGS' ? 'Room for your plans.' : 'Your everyday current.'}
+      />
+      <QueryError error={account.error ?? history.error} />
+      {account.isPending ? (
+        <Loading />
+      ) : (
+        account.data && (
+          <>
+            <div className="two-columns">
+              <section className="panel">
+                <AccountCard account={account.data} />
+                <small className="muted">Opened {dateLabel(account.data.createdAt)} · ZMW</small>
+              </section>
+              <section className="safety">
+                <h2>A clear view of this account.</h2>
+                <p>
+                  Posted activity determines your balance. Transfers under review are shown with
+                  their current status.
+                </p>
+                <div className="action-row">
+                  <Link to="/move" className="button">
+                    Move money
+                  </Link>
+                  <Link to="/statements" className="button secondary">
+                    Get statement
+                  </Link>
+                </div>
+              </section>
+            </div>
+            <section className="panel" style={{ marginTop: 25 }}>
+              <h2>Account transactions</h2>
+              {history.isPending ? (
+                <Loading />
+              ) : (
+                <TransactionTable rows={history.data?.content ?? []} />
+              )}
+              <div className="pager">
+                <button
+                  className="button secondary"
+                  disabled={!page}
+                  onClick={() => setPage(page - 1)}
+                >
+                  Previous
+                </button>
+                <span>Page {page + 1}</span>
+                <button
+                  className="button secondary"
+                  disabled={!history.data || (page + 1) * 15 >= history.data.totalElements}
+                  onClick={() => setPage(page + 1)}
+                >
+                  Next
+                </button>
+              </div>
+            </section>
+          </>
+        )
+      )}
     </>
   );
 }

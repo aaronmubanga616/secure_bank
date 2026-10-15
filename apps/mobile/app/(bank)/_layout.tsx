@@ -31,6 +31,7 @@ export default function BankLayout() {
         name="move"
         options={{
           title: 'Move money',
+          tabBarButtonTestID: 'bank-move-tab',
           tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 21 }}>↗</Text>,
         }}
       />
@@ -43,6 +44,7 @@ export default function BankLayout() {
       />
       {[
         'accounts',
+        'account',
         'receipt',
         'recipients',
         'scheduled',

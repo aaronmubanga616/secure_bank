@@ -38,7 +38,11 @@ test('customer opens an account, moves simulated money, and downloads a statemen
   await expect(page.locator('.balance-card h2')).toHaveText('K1,500.50');
   await page.screenshot({ path: 'test-results/customer-desktop.png', fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.screenshot({ path: 'test-results/customer-mobile.png', fullPage: true, animations: 'disabled' });
+  await page.screenshot({
+    path: 'test-results/customer-mobile.png',
+    fullPage: true,
+    animations: 'disabled',
+  });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.getByRole('button', { name: 'Open menu' }).click();
   await page.getByRole('navigation').getByRole('link', { name: 'Statements', exact: true }).click();

@@ -1,0 +1,24 @@
+{
+  "reviewedAt": "2026-10-15",
+  "scope": "Educational simulator only. Reassess before distributing native binaries or exposing development tooling.",
+  "advisories": [
+    {
+      "package": "braces",
+      "id": "GHSA-vfj7-8cjw-p6xm",
+      "versions": ["3.0.3"],
+      "reason": "Expo build/watch tooling; no patched upstream release was available at review."
+    },
+    {
+      "package": "node-forge",
+      "id": "GHSA-86w9-cpqp-85rv",
+      "versions": ["1.4.0"],
+      "reason": "Expo development/certificate tooling; no patched upstream release was available at review."
+    },
+    {
+      "package": "decode-uri-component",
+      "id": "GHSA-vcc3-ghjq-m6fr",
+      "versions": ["0.2.2"],
+      "reason": "Expo Router's CommonJS query-string dependency; the patched ESM release needs an upstream-compatible migration. Malformed deep-link decoding remains a known limitation."
+    }
+  ]
+}

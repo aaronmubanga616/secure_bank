@@ -1,0 +1,27 @@
+appId: dev.securebank.mobile
+---
+- launchApp:
+    clearState: true
+- assertVisible: 'A clearer everyday.'
+- tapOn: { id: 'input-email' }
+- inputText: ${TEST_EMAIL}
+- tapOn: { id: 'input-password' }
+- inputText: ${TEST_PASSWORD}
+- hideKeyboard
+- tapOn: 'Sign in'
+- assertVisible: 'Hello,.*'
+- tapOn: { id: 'bank-move-tab' }
+- tapOn: 'Add simulated funds'
+- tapOn: 'CURRENT.*'
+- tapOn: { id: 'input-amount' }
+- inputText: '10.25'
+- tapOn: { id: 'input-description' }
+- inputText: 'Native customer flow check'
+- hideKeyboard
+- tapOn: 'Review transaction'
+- assertVisible: 'One last look.'
+- tapOn: 'Confirm transaction'
+- assertVisible: 'COMPLETED'
+- assertVisible: 'K10.25'
+- tapOn: 'Back to overview'
+- assertVisible: 'Hello,.*'

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Text, View } from 'react-native';
-import { type Page, type Transaction, formatMoney } from '@securebank/contracts';
+import { type Page, type Transaction, formatMoney, lusakaRange } from '@securebank/contracts';
 import {
   Screen,
   Card,
@@ -45,8 +45,7 @@ export default function Activity() {
           submit="Apply filters"
           action={async (values) => {
             const next = { ...values };
-            if (next.from) next.from += 'T00:00:00+02:00';
-            if (next.to) next.to += 'T23:59:59+02:00';
+            Object.assign(next, lusakaRange(next.from, next.to));
             setFilters(Object.fromEntries(Object.entries(next).filter(([, value]) => value)));
             setPage(0);
           }}

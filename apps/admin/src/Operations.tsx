@@ -13,7 +13,7 @@ import {
   dateLabel,
   useSession,
 } from '@securebank/ui';
-import { type Page, type Transaction, formatMoney } from '@securebank/contracts';
+import { type Page, type Transaction, formatMoney, lusakaRange } from '@securebank/contracts';
 import { useData } from './data';
 import { QueryError, TransactionTable } from './App';
 export function Transactions() {
@@ -28,8 +28,7 @@ export function Transactions() {
           submit="Apply filters"
           action={async (form) => {
             const next = values(form);
-            if (next.from) next.from += 'T00:00:00+02:00';
-            if (next.to) next.to += 'T23:59:59+02:00';
+            Object.assign(next, lusakaRange(next.from, next.to));
             setFilters(Object.fromEntries(Object.entries(next).filter(([, value]) => value)));
             setPage(0);
           }}

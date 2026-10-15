@@ -15,6 +15,9 @@ import {
 } from '@securebank/ui';
 import {
   formatMoney,
+  normalizeAmount,
+  paymentKeyKeeper,
+  lusakaRange,
   type Account,
   type Transaction,
   type Page,
@@ -35,8 +38,7 @@ export function History() {
           submit="Apply filters"
           action={async (data) => {
             const fields = values(data);
-            if (fields.from) fields.from = `${fields.from}T00:00:00+02:00`;
-            if (fields.to) fields.to = `${fields.to}T23:59:59+02:00`;
+            Object.assign(fields, lusakaRange(fields.from, fields.to));
             setFilters(Object.fromEntries(Object.entries(fields).filter(([, value]) => value)));
             setPage(0);
           }}
@@ -167,6 +169,7 @@ export function MoveMoney() {
   const [recipient, setRecipient] = useState('');
   const [done, setDone] = useState(false);
   const key = useRef('');
+  const [keyFor] = useState(() => paymentKeyKeeper(() => crypto.randomUUID()));
   const navigate = useNavigate();
   const accounts = useData<Account[]>('/accounts');
   const recipients = useData<Beneficiary[]>('/beneficiaries');
@@ -205,6 +208,7 @@ export function MoveMoney() {
                       headers: { 'Idempotency-Key': key.current },
                     })
                   ).data;
+                  keyFor.completed(draft);
                   setDone(true);
                   await queryClient.invalidateQueries();
                   navigate(`/transactions/${result.id}`);
@@ -239,9 +243,7 @@ export function MoveMoney() {
                   ).data;
                   name = `${lookup.fullName} · ${lookup.accountNumber}`;
                 }
-                const amount = data.amount.includes('.')
-                  ? data.amount.padEnd(data.amount.indexOf('.') + 3, '0')
-                  : `${data.amount}.00`;
+                const amount = normalizeAmount(data.amount);
                 const next = {
                   type,
                   sourceAccount: type === 'DEPOSIT' ? null : data.sourceAccount,
@@ -249,7 +251,7 @@ export function MoveMoney() {
                   amount,
                   description: data.description,
                 };
-                key.current = crypto.randomUUID();
+                key.current = keyFor(next);
                 setRecipient(name);
                 setDraft(next);
                 setDone(false);

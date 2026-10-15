@@ -61,12 +61,13 @@ export const sessionStore = {
   },
   clear: async () => {
     generation++;
-    emit({ session: null, locked: false, hasSavedSession: false, ready: true });
+    emit({ session: null, locked: false, hasSavedSession: false, ready: true, biometrics: false });
     queryClient.clear();
     await serialize(() =>
       Promise.all([
         SecureStore.deleteItemAsync(normalKey),
         SecureStore.deleteItemAsync(biometricKey),
+        SecureStore.deleteItemAsync('securebank-biometric'),
       ]),
     );
   },
@@ -124,12 +125,14 @@ export async function unlockSession() {
   const expected = generation;
   const token = await SecureStore.getItemAsync(biometricKey, protectedOptions);
   if (!token) throw new Error('Device security changed or this session expired. Sign in again.');
+  if (expected !== generation) throw new Error('The session changed.');
   const result = (await api.post<Session>('/auth/refresh', { refreshToken: token })).data;
   if (expected !== generation) throw new Error('The session changed.');
   await sessionStore.write(result);
   emit({ locked: false });
 }
 export async function enableBiometrics() {
+  const expected = generation;
   if (!state.session) throw new Error('Sign in first.');
   if (
     !(await LocalAuthentication.hasHardwareAsync()) ||
@@ -137,25 +140,31 @@ export async function enableBiometrics() {
     !SecureStore.canUseBiometricAuthentication()
   )
     throw new Error('Set up supported biometrics in your device settings first.');
-  await SecureStore.setItemAsync(biometricKey, state.session.refreshToken, protectedOptions);
-  const token = await SecureStore.getItemAsync(biometricKey, protectedOptions);
-  if (!token) throw new Error('Device verification was cancelled.');
-  await SecureStore.setItemAsync('securebank-biometric', 'enabled', secureOptions);
-  await SecureStore.deleteItemAsync(normalKey);
-  emit({ biometrics: true });
+  await serialize(async () => {
+    if (expected !== generation || !state.session) throw new Error('The session changed.');
+    await SecureStore.setItemAsync(biometricKey, state.session.refreshToken, protectedOptions);
+    const token = await SecureStore.getItemAsync(biometricKey, protectedOptions);
+    if (!token) throw new Error('Device verification was cancelled.');
+    if (expected !== generation) throw new Error('The session changed.');
+    await SecureStore.setItemAsync('securebank-biometric', 'enabled', secureOptions);
+    await SecureStore.deleteItemAsync(normalKey);
+    emit({ biometrics: true });
+  });
 }
 export async function disableBiometrics() {
-  const token = await SecureStore.getItemAsync(biometricKey, protectedOptions);
-  if (!token) throw new Error('Unlock your device session first.');
-  await SecureStore.setItemAsync(normalKey, token, secureOptions);
-  await SecureStore.deleteItemAsync(biometricKey);
-  await SecureStore.deleteItemAsync('securebank-biometric');
-  emit({ biometrics: false });
+  const expected = generation;
+  await serialize(async () => {
+    const token = await SecureStore.getItemAsync(biometricKey, protectedOptions);
+    if (!token) throw new Error('Unlock your device session first.');
+    if (expected !== generation) throw new Error('The session changed.');
+    await SecureStore.setItemAsync(normalKey, token, secureOptions);
+    await SecureStore.deleteItemAsync(biometricKey);
+    await SecureStore.deleteItemAsync('securebank-biometric');
+    emit({ biometrics: false });
+  });
 }
 export async function signOut() {
   const token = state.session?.refreshToken;
   await sessionStore.clear();
-  await SecureStore.deleteItemAsync('securebank-biometric');
-  emit({ biometrics: false });
   if (token) await api.post('/auth/logout', { refreshToken: token }).catch(() => {});
 }

@@ -203,6 +203,7 @@ export function Form({
             </View>
           ) : (
             <TextInput
+              testID={'input-' + field.name}
               accessibilityLabel={field.label}
               value={values[field.name] ?? ''}
               onChangeText={(text) => setValues({ ...values, [field.name]: text })}

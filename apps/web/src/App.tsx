@@ -44,7 +44,15 @@ import {
 } from '@securebank/contracts';
 import { useData } from './data';
 import { History, Receipt, MoveMoney } from './Payments';
-import { Accounts, Recipients, Schedules, Statements, Notifications, Profile } from './Manage';
+import {
+  Accounts,
+  AccountDetail,
+  Recipients,
+  Schedules,
+  Statements,
+  Notifications,
+  Profile,
+} from './Manage';
 
 export function QueryError({ error }: { error: unknown }) {
   return error ? <Notice error>{errorMessage(error)}</Notice> : null;
@@ -166,6 +174,11 @@ export function App() {
       <Route element={<Layout />}>
         <Route index element={<Dashboard />} />
         <Route path="accounts" element={<Accounts />} />
+        <Route path="accounts/:id" element={<AccountDetail />} />
+        <Route path="dashboard" element={<Navigate to="/" replace />} />
+        <Route path="transfer" element={<Navigate to="/move" replace />} />
+        <Route path="beneficiaries" element={<Navigate to="/recipients" replace />} />
+        <Route path="scheduled-transfers" element={<Navigate to="/scheduled" replace />} />
         <Route path="transactions" element={<History />} />
         <Route path="transactions/:id" element={<Receipt />} />
         <Route path="move" element={<MoveMoney />} />
@@ -199,6 +212,9 @@ export function AccountCard({ account }: { account: Account }) {
         <span className="account-number">{account.accountNumber}</span>
         <Badge value={account.status} />
       </div>
+      <Link className="text-button" to={`/accounts/${account.id}`}>
+        Account details ↗
+      </Link>
     </div>
   );
 }
