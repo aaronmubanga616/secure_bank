@@ -4,21 +4,21 @@ Base URL: `http://localhost:8180/api/v1` for local development. The gateways pro
 
 ## Authentication
 
-| Method | Path | Body / purpose |
-| --- | --- | --- |
-| POST | `/auth/register` | `email`, `fullName`, `password`; always returns a generic 202 response |
-| POST | `/auth/request-verification` | `email`; request a replacement verification link |
-| POST | `/auth/verify-email` | `token`; one-use email verification |
-| POST | `/auth/login` | `email`, `password`; session or an MFA challenge |
-| POST | `/auth/mfa/verify` | `challenge`, `code`; TOTP or a one-use recovery code |
-| POST | `/auth/refresh` | `refreshToken`; rotate and return a new session |
-| POST | `/auth/logout` | `refreshToken`; revoke the family and invalidate access |
-| POST | `/auth/forgot-password` | `email`; generic 202 response |
-| POST | `/auth/reset-password` | `token`, `password`; one-use reset and session invalidation |
-| POST | `/auth/change-password` | Bearer + `currentPassword`, `newPassword` |
-| POST | `/auth/mfa/setup` | Bearer + `password`; secret and authenticator URI |
-| POST | `/auth/mfa/confirm` | Bearer + `code`; enables MFA and returns recovery codes once |
-| POST | `/auth/mfa/disable` | Bearer + `password`, `code` |
+| Method | Path                         | Body / purpose                                                         |
+| ------ | ---------------------------- | ---------------------------------------------------------------------- |
+| POST   | `/auth/register`             | `email`, `fullName`, `password`; always returns a generic 202 response |
+| POST   | `/auth/request-verification` | `email`; request a replacement verification link                       |
+| POST   | `/auth/verify-email`         | `token`; one-use email verification                                    |
+| POST   | `/auth/login`                | `email`, `password`; session or an MFA challenge                       |
+| POST   | `/auth/mfa/verify`           | `challenge`, `code`; TOTP or a one-use recovery code                   |
+| POST   | `/auth/refresh`              | `refreshToken`; rotate and return a new session                        |
+| POST   | `/auth/logout`               | `refreshToken`; revoke the family and invalidate access                |
+| POST   | `/auth/forgot-password`      | `email`; generic 202 response                                          |
+| POST   | `/auth/reset-password`       | `token`, `password`; one-use reset and session invalidation            |
+| POST   | `/auth/change-password`      | Bearer + `currentPassword`, `newPassword`                              |
+| POST   | `/auth/mfa/setup`            | Bearer + `password`; secret and authenticator URI                      |
+| POST   | `/auth/mfa/confirm`          | Bearer + `code`; enables MFA and returns recovery codes once           |
+| POST   | `/auth/mfa/disable`          | Bearer + `password`, `code`                                            |
 
 Access tokens last 10 minutes. Refresh tokens last 7 days and rotate on every use. Both are opaque credentials to clients; do not log them. A successful session contains `accessToken`, `refreshToken`, and a safe `user` object. An MFA challenge contains `mfaRequired: true` and `challenge`, with no usable session token.
 
@@ -34,6 +34,7 @@ Local email is captured by [Mailpit](http://localhost:8025). `docker compose up 
 - `GET /accounts` lists only the current customer's accounts.
 - `POST /accounts` accepts `type: SAVINGS | CURRENT`. This simulator permits one account of each type per customer.
 - `GET /accounts/{id}` requires ownership. Foreign and missing IDs both return 404.
+- `GET /accounts/{id}/transactions` returns that owned account's paginated history using the transaction filters below.
 
 Account operations require CUSTOMER. Staff use explicit staff routes with their own role policies.
 
@@ -59,7 +60,19 @@ Administrators can `PATCH /admin/limits` with `perTransaction`, `dailyTransfer`,
 
 The worker executes due payments every fifteen seconds. Each occurrence has a deterministic financial idempotency key. Money commits independently of schedule bookkeeping, so a crash after a payment cannot cause another payment when the worker resumes. Transient technical failures retry up to three times with backoff. A business decline is a final financial result; recurring schedules advance to the next occurrence. A resumed overdue schedule runs once and skips missed slots. Monthly schedules preserve their original day, using the last day of shorter months. Cancellation stops future dispatch; it cannot undo money already committed by an in-flight occurrence.
 
-## Error format
+## Notifications and statements
+
+`GET /notifications?page=0&size=20` returns the owned inbox. `PATCH /notifications/{id}/read` marks one owned notification read, and `POST /notifications/read-all` marks the current user's inbox. Notifications are durable projections, so a short delivery delay is possible after the payment commits.
+
+`GET /statements?accountId={id}&from=YYYY-MM-DD&to=YYYY-MM-DD` downloads an owned-account PDF with customer name, masked account, opening/closing posted balances and chronological entries. Dates are inclusive Lusaka calendar dates, cannot exceed today and span at most one year. The PDF repeats headers/page numbers across multiple pages. Held/failed intents have no posted statement entries.
+
+## Staff API
+
+Every `/admin` route requires an active staff role and MFA-authenticated JWT. `GET /admin/users` searches customers; `GET /admin/users/{id}` includes safe profile/accounts. `PATCH /admin/users/{id}/status` and `/admin/accounts/{id}/status` require ADMIN and a reason. `POST /admin/staff` is ADMIN-only. Transaction search/detail and audit/system reads are available to all staff roles; writes and fraud policies follow [the staff role table](../staff.md).
+
+`GET /fraud` and `POST /fraud/{id}/review` are ADMIN/COMPLIANCE-only; review accepts `outcome` and `note`. `GET /admin/fraud-rules` is ADMIN/COMPLIANCE; changes are ADMIN-only. Policy limits/rules are validated server-side. `GET /admin/system` includes five-second cached display statistics plus current delivery/investigation counts. These snapshots never authorize financial operations. Metrics at `/actuator/prometheus` use a separate private monitoring token.
+
+## Error responses
 
 Errors contain `status`, `code`, `message`, `correlationId`, and optional `fieldErrors`. Unknown resources return 404; unauthorized actions return 403; invalid or expired sessions return 401; rate limits return 429. Unexpected errors never expose stack traces or submitted credentials.
 

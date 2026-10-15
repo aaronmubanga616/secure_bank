@@ -2,14 +2,14 @@
 
 The separate staff portal runs on port 5174 during development or 8089 in Compose. The API enforces roles for every operation:
 
-| Operation | Administrator | Support | Compliance |
-| --- | --- | --- | --- |
-| Customer/transaction search and details | Yes | Yes | Yes |
-| Audit trail and health overview | Yes | Yes | Yes |
-| Fraud investigations and decisions | Yes | No | Yes |
-| View fraud policy | Yes | No | Yes |
-| Suspend customers or freeze accounts | Yes | No | No |
-| Change limits/rules or create staff | Yes | No | No |
+| Operation                               | Administrator | Support | Compliance |
+| --------------------------------------- | ------------- | ------- | ---------- |
+| Customer/transaction search and details | Yes           | Yes     | Yes        |
+| Audit trail and health overview         | Yes           | Yes     | Yes        |
+| Fraud investigations and decisions      | Yes           | No      | Yes        |
+| View fraud policy                       | Yes           | No      | Yes        |
+| Suspend customers or freeze accounts    | Yes           | No      | No         |
+| Change limits/rules or create staff     | Yes           | No      | No         |
 
 For the first administrator, set `BOOTSTRAP_ADMIN_ENABLED=true`, `BOOTSTRAP_ADMIN_EMAIL`, and a unique `BOOTSTRAP_ADMIN_PASSWORD` (12+ characters, at most 72 UTF-8 bytes) in your private environment before starting the API. The helper generates a random staff password in new local `.env` files. Provisioning creates one verified administrator only when no administrator exists; it never resets an existing password. Disable the flag after the initial setup. No account is created by default and no public seed credentials exist.
 
