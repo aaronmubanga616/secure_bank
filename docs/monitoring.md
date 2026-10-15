@@ -1,6 +1,6 @@
 # Monitoring and operations
 
-Run `node scripts/setup-env.mjs` to generate the private monitoring token file, then `docker compose --profile monitoring up -d --build`. Prometheus is at port 9090; Grafana is at port 3000, with username `admin` and the private `GRAFANA_ADMIN_PASSWORD` from `.env`. Both bind loopback. The automatically provisioned dashboard is **SecureBank · Operations**.
+Run `node scripts/setup-env.mjs` to generate the private monitoring token file, then `docker compose --profile monitoring up -d --build`. Prometheus is at port 9090; Grafana is at `GRAFANA_PORT` (default 3000), with username `admin` and the private `GRAFANA_ADMIN_PASSWORD` from `.env`. Both bind loopback. The automatically provisioned dashboard is **SecureBank · Operations**. Change `GRAFANA_PORT` if another local app uses 3000.
 
 Prometheus scrapes the backend internally using a dedicated bearer token mounted as a Compose secret. Customer and staff session tokens cannot substitute for this credential. It is never embedded in the Grafana dashboard or public configuration. The configuration follows [Prometheus authorization settings](https://prometheus.io/docs/prometheus/latest/configuration/configuration/) and [Grafana file provisioning](https://grafana.com/docs/grafana/latest/administration/provisioning/).
 

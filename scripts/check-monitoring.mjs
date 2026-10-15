@@ -16,9 +16,12 @@ for (let attempt = 0; attempt < 20; attempt++) {
 assert.equal(target?.health, 'up', 'Prometheus must successfully scrape the API');
 const authorization =
   'Basic ' + Buffer.from('admin:' + process.env.GRAFANA_ADMIN_PASSWORD).toString('base64');
-const response = await fetch(`http://localhost:${process.env.GRAFANA_PORT ?? 3000}/api/dashboards/uid/securebank-overview`, {
-  headers: { Authorization: authorization },
-});
+const response = await fetch(
+  `http://localhost:${process.env.GRAFANA_PORT ?? 3000}/api/dashboards/uid/securebank-overview`,
+  {
+    headers: { Authorization: authorization },
+  },
+);
 assert.equal(response.status, 200);
 const dashboard = await response.json();
 assert.ok(dashboard.dashboard.panels.length >= 10);

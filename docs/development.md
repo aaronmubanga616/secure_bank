@@ -22,7 +22,7 @@ Build a portfolio banking simulator with working customer, mobile, and staff app
 14. [x] Security review and hardening.
 15. [x] Metrics, health checks, and monitoring dashboards.
 16. [x] Automated banking, authorization, concurrency, and frontend checks.
-17. CI, operations documentation, and final verification.
+17. [x] CI, operations documentation, and final verification.
 
 ## Working agreement
 

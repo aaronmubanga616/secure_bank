@@ -16,6 +16,17 @@ A simulated digital banking platform for Zambia, built around an auditable doubl
 
 React 19 · TypeScript · Expo 57 · React Native · Spring Boot 3.5 · Java 21 · PostgreSQL 17 · Redis · Kafka
 
+![Customer dashboard with fictional simulator data](docs/images/customer-dashboard.png)
+
+<details>
+<summary>Staff dashboard and phone layout</summary>
+
+![Staff operations with fictional simulator data](docs/images/staff-dashboard.png)
+
+<img src="docs/images/customer-phone.png" alt="Customer dashboard at phone width" width="390" />
+
+</details>
+
 ## Project layout
 
 | Directory            | Purpose                                             |
