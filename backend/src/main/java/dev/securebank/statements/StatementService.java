@@ -61,7 +61,6 @@ public class StatementService {
       throw ApiException.badRequest("RANGE_TOO_LARGE", "Choose a shorter statement period.");
     BigDecimal balance = opening;
     var lines = new ArrayList<String>();
-    lines.add("Date         Description                         Debit        Credit       Balance");
     lines.add(
         "Opening balance                                                              "
             + money(opening));
@@ -90,7 +89,15 @@ public class StatementService {
         var output = new ByteArrayOutputStream()) {
       var regular = new PDType1Font(Standard14Fonts.FontName.COURIER);
       var heading = new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD);
-      int pages = (lines.size() + 35) / 36;
+      var pageLines = new ArrayList<List<String>>();
+      for (int offset = 0; offset < lines.size(); ) {
+        int endLine = Math.min(offset + 35, lines.size());
+        // Keep each transaction and its reference on the same page.
+        if (endLine < lines.size() && lines.get(endLine).startsWith("             SB-")) endLine--;
+        pageLines.add(lines.subList(offset, endLine));
+        offset = endLine;
+      }
+      int pages = pageLines.size();
       for (int index = 0; index < pages; index++) {
         var page = new PDPage(PDRectangle.A4);
         document.addPage(page);
@@ -109,9 +116,16 @@ public class StatementService {
                   + " account **** "
                   + view.accountNumber().substring(view.accountNumber().length() - 4));
           text(stream, regular, 9, 40, 692, from + " to " + to + " (Africa/Lusaka)");
-          int offset = index * 36;
-          for (int line = offset; line < Math.min(offset + 36, lines.size()); line++)
-            text(stream, regular, 8, 40, 654 - (line - offset) * 16, lines.get(line));
+          text(
+              stream,
+              regular,
+              8,
+              40,
+              654,
+              "Date         Description                         Debit        Credit       Balance");
+          var content = pageLines.get(index);
+          for (int line = 0; line < content.size(); line++)
+            text(stream, regular, 8, 40, 638 - line * 16, content.get(line));
           text(
               stream,
               regular,

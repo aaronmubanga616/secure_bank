@@ -64,3 +64,12 @@ The complete backend suite passed 50 tests (10 unit/HTTP and 40 integration), wi
 
 Ten JavaScript tests passed after adding exact input normalization, inclusive Lusaka date boundaries, stable retry keys across unchanged review edits, fresh keys after acknowledged payments, and cancellation of biometric enrollment on logout. TypeScript and lint passed. The patched UUID API check passed. Dependency review reports three explicitly documented upstream advisories; new advisories or changed affected versions fail the baseline check. The bounded local payment load check also passed; final container measurements are recorded with the testing guide.
 
+## Final integration and monitoring
+
+On 2026-10-15 a clean backend verification passed **56 checks**: 10 unit/HTTP and 46 integration tests, with no failures or skips. JaCoCo generated a report from that clean run. Ten JavaScript tests, all workspace type checks, lint, both production browser builds, SDK compatibility and both Android/iOS Hermes exports passed. A transient Windows file-read failure during native export was resolved by clearing Metro's cache and limiting it to two workers.
+
+All three live browser journeys passed through the Docker customer/staff gateways and packaged backend, with real PostgreSQL, Redis, Kafka and Mailpit. Desktop/390-pixel screenshots were inspected. The container load check used ten workers: 100 unique deposits in 2,639 ms, 37.9 operations/second, p50 237 ms, p95 **459 ms**, maximum 575 ms. Ten duplicate submissions then created one additional payment. The final exact balance was K102.00. These are local simulator measurements, not production capacity claims.
+
+Private metrics authorization, a successful Prometheus scrape and the provisioned Grafana dashboard passed live checks. Local image downloads repeatedly timed out, so monitoring configuration was exercised using already available Prometheus 3.13.1 and Grafana 13.2.1; the committed Compose configuration requests newer 3.13.4/13.2.4 patches for CI. Grafana used local port 3100 because another application held 3000. The initial banking container build passed; a later rebuild using Maven Central and cached dependencies hit external connection timeouts and is also checked in CI.
+
+The two-page PDF sample was rendered and inspected. Pagination preserves transaction/reference pairs and repeats account details, column labels and page numbers. Native device packaging/biometrics and the included Maestro flow remain unexecuted. The three documented upstream Expo advisories remain open.

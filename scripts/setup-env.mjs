@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, chmodSync } from 'node:fs';
 import { parseEnv } from 'node:util';
 const existed = existsSync('.env');
 let content = readFileSync(existed ? '.env' : '.env.example', 'utf8');
@@ -20,8 +20,13 @@ if (!config.METRICS_TOKEN) {
   config = parseEnv(content);
 }
 writeFileSync('.env', content, { mode: 0o600, flag: existed ? 'w' : 'wx' });
+chmodSync('.env', 0o600);
 mkdirSync('.local', { recursive: true, mode: 0o700 });
-writeFileSync('.local/metrics.token', config.METRICS_TOKEN, { mode: 0o600 });
+chmodSync('.local', 0o700);
+// The non-root Prometheus process reads this file through its secret mount.
+// The enclosing 0700 directory keeps it private from other host users.
+writeFileSync('.local/metrics.token', config.METRICS_TOKEN, { mode: 0o444 });
+chmodSync('.local/metrics.token', 0o444);
 console.log(
   'Local configuration is ready. Existing secrets were preserved; new values were not printed.',
 );

@@ -41,6 +41,7 @@ import {
   type Transaction,
   type Page,
   type Schedule,
+  type Notification,
 } from '@securebank/contracts';
 import { useData } from './data';
 import { History, Receipt, MoveMoney } from './Payments';
@@ -287,6 +288,7 @@ function Dashboard() {
   const accounts = useData<Account[]>('/accounts');
   const recent = useData<Page<Transaction>>('/transactions', { size: 100 });
   const schedules = useData<Schedule[]>('/scheduled-transfers');
+  const notifications = useData<Page<Notification>>('/notifications', { size: 10 });
   const total = sumMoney((accounts.data ?? []).map((account) => account.balance));
   const days = Array.from({ length: 7 }, (_, index) => {
     const day = new Date();
@@ -430,10 +432,24 @@ function Dashboard() {
             <section className="safety">
               <ShieldCheck size={25} />
               <h3>A little more peace of mind.</h3>
+              <QueryError error={notifications.error} />
+              {notifications.data?.content
+                .filter(
+                  (notification) => notification.category === 'SECURITY' && !notification.read,
+                )
+                .slice(0, 2)
+                .map((notification) => (
+                  <p key={notification.id}>{notification.message}</p>
+                ))}
               <p>Protect your everyday with an authenticator and a strong, unique password.</p>
-              <Link className="text-button" to="/security">
-                Review security <ArrowUpRight size={12} />
-              </Link>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+                <Link className="text-button" to="/notifications">
+                  View your inbox
+                </Link>
+                <Link className="text-button" to="/security">
+                  Review security <ArrowUpRight size={12} />
+                </Link>
+              </div>
             </section>
           </div>
         </div>
