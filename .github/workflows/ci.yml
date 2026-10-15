@@ -35,7 +35,7 @@ jobs:
         with: { distribution: temurin, java-version: 21, cache: maven }
       - run: mvn -B -ntp -s .mvn/settings.xml clean verify
         working-directory: backend
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: backend-coverage
           path: backend/target/site/jacoco
