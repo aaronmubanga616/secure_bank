@@ -21,10 +21,17 @@ import java.util.UUID;
 @SpringBootTest(properties={
     "securebank.jwt-secret=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
     "securebank.encryption-key=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
-    "securebank.events-enabled=false", "securebank.jobs-enabled=false"
+    "securebank.events-enabled=false", "securebank.jobs-enabled=false", "securebank.monitoring-enabled=false",
+    "securebank.metrics-token=test-monitoring-token-with-32-characters"
 })
 @AutoConfigureMockMvc
+@org.springframework.context.annotation.Import(IntegrationTestSupport.TestClock.class)
 public abstract class IntegrationTestSupport {
+    @org.springframework.boot.test.context.TestConfiguration
+    static class TestClock {
+        @org.springframework.context.annotation.Bean @org.springframework.context.annotation.Primary
+        java.time.Clock fixedRiskClock() { return java.time.Clock.fixed(java.time.Instant.parse("2026-10-15T12:00:00Z"),java.time.ZoneOffset.UTC); }
+    }
     // Shared for the test JVM; Ryuk removes them at JVM exit. Spring's cached context keeps valid endpoints.
     protected static final PostgreSQLContainer<?> postgres=new PostgreSQLContainer<>("postgres:17-alpine");
     protected static final GenericContainer<?> redis=new GenericContainer<>(DockerImageName.parse("redis:7.4-alpine")).withExposedPorts(6379);

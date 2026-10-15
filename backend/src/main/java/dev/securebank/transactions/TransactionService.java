@@ -67,7 +67,7 @@ public class TransactionService {
         if (destination!=null) data.put("destinationUser",destination.get("user_id").toString());
         events.record("TransactionCreated",owner,"transactions/"+id,data);
         String failure=checkRules(owner,input.type(),source,destination,amount);
-        var decision=input.type()==Type.TRANSFER && failure==null?risk.assess(owner,destinationId,amount):new RiskService.Decision(0,false,List.of());
+        var decision=input.type()==Type.TRANSFER && failure==null?risk.assess(owner,destinationId,amount,id):new RiskService.Decision(0,false,List.of());
         jdbc.update("UPDATE transactions SET risk_score=? WHERE id=?",decision.score(),id);
         if (failure==null && decision.hold()) {
             jdbc.update("UPDATE transactions SET status='FLAGGED' WHERE id=?",id);
@@ -94,7 +94,7 @@ public class TransactionService {
         if(initial.isEmpty()) throw ApiException.notFound();
         var row=initial.getFirst(); UUID owner=(UUID)row.get("user_id");
         UUID source=(UUID)row.get("source_account"),destination=(UUID)row.get("destination_account");
-        lockParticipants(owner,source,destination);
+        lockParticipants(owner,source,destination,false);
         String status=jdbc.queryForObject("SELECT status FROM transactions WHERE id=? FOR UPDATE",String.class,id);
         if(!"FLAGGED".equals(status)) return;
         ledger.lockAccounts(source,destination);
@@ -135,9 +135,12 @@ public class TransactionService {
         if (rows.isEmpty()) throw ApiException.notFound(); return rows.getFirst();
     }
     private void lockParticipants(UUID owner,UUID source,UUID destination) {
+        lockParticipants(owner,source,destination,true);
+    }
+    private void lockParticipants(UUID owner,UUID source,UUID destination,boolean requireActive) {
         var users=jdbc.queryForList("SELECT id,status,role,email_verified FROM users WHERE id=? OR id IN (SELECT user_id FROM accounts WHERE id IN (?,?)) ORDER BY id FOR UPDATE",owner,source,destination);
         var current=users.stream().filter(u->owner.equals(u.get("id"))).findFirst().orElseThrow(ApiException::notFound);
-        if (!current.get("status").equals("ACTIVE") || !current.get("role").equals("CUSTOMER") || !Boolean.TRUE.equals(current.get("email_verified")))
+        if (requireActive && (!current.get("status").equals("ACTIVE") || !current.get("role").equals("CUSTOMER") || !Boolean.TRUE.equals(current.get("email_verified"))))
             throw new ApiException(HttpStatus.FORBIDDEN,"ACCOUNT_INELIGIBLE","The customer cannot transact.");
         jdbc.queryForList("SELECT id FROM accounts WHERE id IN (?,?) ORDER BY id FOR UPDATE",source,destination);
     }
@@ -160,8 +163,24 @@ public class TransactionService {
     }
 
     public PageResult<TransactionView> list(UUID owner,int page,int size,String query,Status status,Instant from,Instant to,BigDecimal minimum,BigDecimal maximum) {
+        return listScoped(owner,null,page,size,query,status,from,to,minimum,maximum);
+    }
+    public PageResult<TransactionView> listAll(int page,int size,String query,Status status,Instant from,Instant to,BigDecimal minimum,BigDecimal maximum) {
+        return listScoped(null,null,page,size,query,status,from,to,minimum,maximum);
+    }
+    public PageResult<TransactionView> forAccount(UUID owner,UUID account,int page,int size) {
+        if(!Boolean.TRUE.equals(jdbc.queryForObject("SELECT EXISTS(SELECT 1 FROM accounts WHERE id=? AND user_id=?)",Boolean.class,account,owner)))throw ApiException.notFound();
+        return listScoped(owner,account,page,size,null,null,null,null,null,null);
+    }
+    public TransactionView forStaff(UUID id) {
+        var rows=jdbc.query(SELECT+" WHERE t.id=?",(r,n)->view(r,r.getObject("user_id",UUID.class)),id);
+        if(rows.isEmpty())throw ApiException.notFound();return rows.getFirst();
+    }
+    private PageResult<TransactionView> listScoped(UUID owner,UUID account,int page,int size,String query,Status status,Instant from,Instant to,BigDecimal minimum,BigDecimal maximum) {
         if (page<0 || page>100000 || size<1 || size>100 || (from!=null && to!=null && from.isAfter(to))) throw ApiException.badRequest("INVALID_PAGE","Check the page or date range.");
-        var params=new ArrayList<Object>(List.of(owner,owner,owner)); var where=new StringBuilder(" WHERE"+OWNED);
+        var params=owner==null?new ArrayList<Object>():new ArrayList<Object>(List.of(owner,owner,owner)); var where=new StringBuilder(owner==null?" WHERE true":" WHERE"+OWNED);
+        if(account!=null){where.append(" AND (t.source_account=? OR t.destination_account=?)");params.add(account);params.add(account);}
+        if(minimum!=null&&minimum.signum()<0||maximum!=null&&maximum.signum()<0||minimum!=null&&maximum!=null&&minimum.compareTo(maximum)>0)throw ApiException.badRequest("INVALID_FILTER","Check the amount range.");
         if (query!=null && !query.isBlank()) { where.append(" AND (t.description ILIKE ? OR t.reference ILIKE ?)"); params.add("%"+query.trim()+"%"); params.add("%"+query.trim()+"%"); }
         if (status!=null) { where.append(" AND t.status=?"); params.add(status.name()); }
         if (from!=null) { where.append(" AND t.created_at>=?"); params.add(Timestamp.from(from)); }
@@ -170,7 +189,7 @@ public class TransactionService {
         if (maximum!=null) { where.append(" AND t.amount<=?"); params.add(maximum); }
         Long total=jdbc.queryForObject("SELECT count(*) FROM ("+SELECT+where+") filtered",Long.class,params.toArray());
         params.add(size); params.add(page*size);
-        var content=jdbc.query(SELECT+where+" ORDER BY t.created_at DESC,t.id DESC LIMIT ? OFFSET ?",(r,n)->view(r,owner),params.toArray());
+        var content=jdbc.query(SELECT+where+" ORDER BY t.created_at DESC,t.id DESC LIMIT ? OFFSET ?",(r,n)->view(r,owner==null?r.getObject("user_id",UUID.class):owner),params.toArray());
         return new PageResult<>(content,page,size,total==null?0:total);
     }
 

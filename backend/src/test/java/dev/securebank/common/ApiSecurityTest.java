@@ -17,6 +17,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class ApiSecurityTest {
     @Autowired MockMvc mvc;
     @MockitoBean JwtDecoder decoder;
+    @MockitoBean dev.securebank.auth.RateLimiter limiter;
 
     @Test void publicMetadataHasSecurityAndCorrelationHeaders() throws Exception {
         mvc.perform(get("/api/v1/platform")).andExpect(status().isOk())

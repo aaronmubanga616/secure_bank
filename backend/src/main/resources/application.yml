@@ -60,6 +60,7 @@ management:
   endpoint:
     health:
       show-details: when_authorized
+      roles: ADMIN,SUPPORT_AGENT,COMPLIANCE_OFFICER
       probes:
         enabled: true
   metrics:
@@ -73,6 +74,9 @@ logging:
     format:
       console: logstash
 securebank:
+  metrics-token: ${METRICS_TOKEN:}
+  monitoring-enabled: ${MONITORING_ENABLED:true}
+  bootstrap-enabled: ${BOOTSTRAP_ADMIN_ENABLED:false}
   web-url: ${CUSTOMER_WEB_URL:http://localhost:5173}
   mail-from: ${MAIL_FROM:securebank@simulator.invalid}
   cors-origins: ${CORS_ORIGINS:http://localhost:5173,http://localhost:5174,http://localhost:8088}

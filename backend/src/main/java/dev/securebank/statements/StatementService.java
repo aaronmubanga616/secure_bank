@@ -23,6 +23,8 @@ public class StatementService {
     @Transactional(readOnly=true,isolation=Isolation.REPEATABLE_READ)
     public byte[] generate(UUID owner,UUID account,LocalDate from,LocalDate to) {
         var view=accounts.get(owner,account);
+        String customer=ascii(jdbc.queryForObject("SELECT full_name FROM users WHERE id=?",String.class,owner));
+        if(customer.length()>78)customer=customer.substring(0,75)+"...";
         if(from==null || to==null || from.isAfter(to) || from.plusYears(1).isBefore(to) || to.isAfter(LocalDate.now(ZoneId.of("Africa/Lusaka")))) throw ApiException.badRequest("INVALID_RANGE","Choose up to one year ending today or earlier.");
         var zone=ZoneId.of("Africa/Lusaka"); var start=Timestamp.from(from.atStartOfDay(zone).toInstant()); var end=Timestamp.from(to.plusDays(1).atStartOfDay(zone).toInstant());
         String signed="CASE WHEN e.direction='CREDIT' THEN e.amount ELSE -e.amount END";
@@ -48,10 +50,11 @@ public class StatementService {
                 try(var stream=new PDPageContentStream(document,page)) {
                     text(stream,heading,22,40,790,"SecureBank"); text(stream,heading,13,40,764,"Account statement | ZMW");
                     text(stream,regular,9,40,740,"SIMULATED FUNDS - Educational banking simulator");
-                    text(stream,regular,9,40,724,view.type()+" account **** "+view.accountNumber().substring(view.accountNumber().length()-4));
-                    text(stream,regular,9,40,708,from+" to "+to+" (Africa/Lusaka)");
+                    text(stream,regular,9,40,724,"Customer: "+customer);
+                    text(stream,regular,9,40,708,view.type()+" account **** "+view.accountNumber().substring(view.accountNumber().length()-4));
+                    text(stream,regular,9,40,692,from+" to "+to+" (Africa/Lusaka)");
                     int offset=index*36;
-                    for(int line=offset;line<Math.min(offset+36,lines.size());line++) text(stream,regular,8,40,678-(line-offset)*16,lines.get(line));
+                    for(int line=offset;line<Math.min(offset+36,lines.size());line++) text(stream,regular,8,40,654-(line-offset)*16,lines.get(line));
                     text(stream,regular,8,40,45,"Generated "+LocalDate.now(zone)+" | Page "+(index+1)+" of "+pages);
                     text(stream,regular,8,40,30,"Only posted transactions affect your balance. Pending reviews are excluded.");
                 }

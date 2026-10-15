@@ -48,6 +48,13 @@ public class ApiErrorHandler {
         return ResponseEntity.internalServerError().body(body(500, "INTERNAL_ERROR", "We could not complete your request.", request));
     }
 
+    @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+    ResponseEntity<?> missing(Exception error,HttpServletRequest request) { return ResponseEntity.status(404).body(body(404,"NOT_FOUND","The requested resource was not found.",request)); }
+    @ExceptionHandler(org.springframework.web.HttpRequestMethodNotSupportedException.class)
+    ResponseEntity<?> method(Exception error,HttpServletRequest request) { return ResponseEntity.status(405).body(body(405,"METHOD_NOT_ALLOWED","This method is not available for the resource.",request)); }
+    @ExceptionHandler(org.springframework.web.HttpMediaTypeNotSupportedException.class)
+    ResponseEntity<?> media(Exception error,HttpServletRequest request) { return ResponseEntity.status(415).body(body(415,"UNSUPPORTED_MEDIA_TYPE","Use a supported request content type.",request)); }
+
     private Map<String, Object> body(int status, String code, String message, HttpServletRequest request) {
         var body = new LinkedHashMap<String, Object>();
         body.put("status", status); body.put("code", code); body.put("message", message);

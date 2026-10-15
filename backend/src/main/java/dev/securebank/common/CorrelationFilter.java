@@ -22,6 +22,7 @@ public class CorrelationFilter extends OncePerRequestFilter {
         String id = supplied != null && supplied.matches("[a-zA-Z0-9-]{1,64}") ? supplied : UUID.randomUUID().toString();
         request.setAttribute("correlationId", id);
         response.setHeader("X-Correlation-ID", id);
+        if(request.getRequestURI().startsWith("/api/"))response.setHeader("Cache-Control","no-store");
         try (var ignored = MDC.putCloseable("correlationId", id)) { chain.doFilter(request, response); }
     }
 }

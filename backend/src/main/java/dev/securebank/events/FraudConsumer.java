@@ -19,6 +19,6 @@ public class FraudConsumer {
         UUID id=UUID.fromString(event.data().get("transactionId").toString());
         UUID destination=jdbc.queryForObject("SELECT destination_account FROM transactions WHERE id=?",UUID.class,id);
         // Streaming checks may open an investigation, but never rewrite a posted journal.
-        risk.alert(event.userId(),id,risk.assess(event.userId(),destination,new BigDecimal(event.data().get("amount").toString())));
+        risk.alert(event.userId(),id,risk.assess(event.userId(),destination,new BigDecimal(event.data().get("amount").toString()),id));
     }
 }

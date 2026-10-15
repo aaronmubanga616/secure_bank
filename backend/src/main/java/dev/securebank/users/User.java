@@ -31,6 +31,10 @@ public class User {
     }
 
     public UUID id() { return id; }
+    public static User staff(String email,String name,String hash,String role) {
+        if(!java.util.Set.of("ADMIN","SUPPORT_AGENT","COMPLIANCE_OFFICER").contains(role)) throw new IllegalArgumentException("Invalid staff role");
+        var user=register(email,name,hash); user.role=role; user.emailVerified=true; return user;
+    }
     public String email() { return email; }
     public String fullName() { return fullName; }
     public String passwordHash() { return passwordHash; }

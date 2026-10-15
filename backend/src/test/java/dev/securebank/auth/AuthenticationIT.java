@@ -28,7 +28,7 @@ import static org.mockito.Mockito.verify;
 @SpringBootTest(properties={
     "securebank.jwt-secret=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
     "securebank.encryption-key=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
-    "securebank.events-enabled=false", "securebank.jobs-enabled=false"
+    "securebank.events-enabled=false", "securebank.jobs-enabled=false", "securebank.monitoring-enabled=false"
 })
 class AuthenticationIT {
     @Container static PostgreSQLContainer<?> postgres=new PostgreSQLContainer<>("postgres:17-alpine");

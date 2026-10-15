@@ -55,7 +55,7 @@ public class AuthService {
         String email=normalize(input.email());
         // A database advisory lock also serializes registration for the same email across API instances.
         jdbc.queryForList("SELECT pg_advisory_xact_lock(hashtextextended(?, 0))", "register:"+email);
-        if (users.findByEmail(email).isPresent()) { passwords.matches(input.password(), dummyHash); return; }
+        if (users.findByEmail(email).isPresent()) { matches(input.password(), dummyHash); return; }
         User user=users.saveAndFlush(User.register(email,input.fullName().trim(),passwords.encode(input.password())));
         sendVerification(user,"VERIFY_EMAIL");
         audit.record(user.id(),"USER_REGISTERED","SUCCESS","users/"+user.id());
@@ -67,14 +67,14 @@ public class AuthService {
         String email=normalize(input.email());
         limiter.hit("login:"+email,10,Duration.ofMinutes(15));
         User user=users.lockByEmail(email).orElse(null);
-        boolean valid=passwords.matches(input.password(),user==null?dummyHash:user.passwordHash());
+        boolean valid=matches(input.password(),user==null?dummyHash:user.passwordHash());
         if (!valid || user==null || !user.status().equals("ACTIVE")) {
             audit.record(user==null?null:user.id(),"LOGIN","FAILURE","authentication"); throw unauthenticated();
         }
         if (!user.emailVerified()) throw new ApiException(HttpStatus.FORBIDDEN,"EMAIL_UNVERIFIED","Verify your email before signing in.");
         if (user.mfaEnabled()) {
             String challenge=Crypto.token();
-            redis.opsForValue().set("mfa:challenge:"+Crypto.hash(challenge),user.id().toString(),Duration.ofMinutes(5));
+            redis.opsForValue().set("mfa:challenge:"+Crypto.hash(challenge),user.id()+":"+user.sessionVersion(),Duration.ofMinutes(5));
             return new AuthResult(null,null,null,true,challenge);
         }
         audit.record(user.id(),"LOGIN","SUCCESS","authentication");
@@ -87,7 +87,9 @@ public class AuthService {
         String key="mfa:challenge:"+Crypto.hash(input.challenge());
         String id=redis.opsForValue().get(key);
         if (id==null) throw unauthenticated();
-        User user=users.lockById(UUID.fromString(id)).orElseThrow(AuthService::unauthenticated);
+        String[] parts=id.split(":",2);
+        User user=users.lockById(UUID.fromString(parts[0])).orElseThrow(AuthService::unauthenticated);
+        if(parts.length!=2 || !parts[1].equals(Integer.toString(user.sessionVersion()))) throw unauthenticated();
         if (!user.mfaEnabled() || !user.status().equals("ACTIVE") || !user.emailVerified()) throw unauthenticated();
         requireMfa(user,input.code());
         // Delete atomically after validation; concurrent consumers cannot both issue a session.
@@ -118,10 +120,9 @@ public class AuthService {
 
     @Transactional
     public void logout(String token) {
-        var rows=jdbc.queryForList("SELECT user_id,family_id FROM refresh_tokens WHERE token_hash=? AND revoked=false",Crypto.hash(token));
+        var rows=jdbc.queryForList("SELECT user_id,family_id FROM refresh_tokens WHERE token_hash=?",Crypto.hash(token));
         if (rows.isEmpty()) return;
         User user=users.lockById((UUID)rows.getFirst().get("user_id")).orElseThrow(AuthService::unauthenticated);
-        if (Boolean.TRUE.equals(jdbc.queryForObject("SELECT revoked FROM refresh_tokens WHERE token_hash=?",Boolean.class,Crypto.hash(token)))) return;
         jdbc.update("UPDATE refresh_tokens SET revoked=true WHERE family_id=?",rows.getFirst().get("family_id"));
         user.invalidateSessions();
         audit.record(user.id(),"LOGOUT","SUCCESS","authentication");
@@ -156,7 +157,7 @@ public class AuthService {
     @Transactional
     public void changePassword(UUID id,ChangePassword input) {
         validatePassword(input.newPassword()); User user=users.lockById(id).orElseThrow(AuthService::unauthenticated);
-        if (!passwords.matches(input.currentPassword(),user.passwordHash())) throw unauthenticated();
+        if (!matches(input.currentPassword(),user.passwordHash())) throw unauthenticated();
         user.changePassword(passwords.encode(input.newPassword()));
         jdbc.update("UPDATE refresh_tokens SET revoked=true WHERE user_id=?",id);
         audit.record(id,"PASSWORD_CHANGED","SUCCESS","users/"+id);
@@ -166,7 +167,7 @@ public class AuthService {
     public MfaSetup setupMfa(UUID id,String password) {
         User user=users.findById(id).orElseThrow(AuthService::unauthenticated);
         limiter.hit("mfa-setup:"+id,5,Duration.ofMinutes(10));
-        if (!passwords.matches(password,user.passwordHash())) throw unauthenticated();
+        if (!matches(password,user.passwordHash())) throw unauthenticated();
         if (user.mfaEnabled()) throw ApiException.badRequest("MFA_ENABLED","MFA is already enabled.");
         String secret=totp.secret();
         redis.opsForValue().set("mfa:setup:"+id,crypto.encrypt(secret),Duration.ofMinutes(10));
@@ -179,7 +180,7 @@ public class AuthService {
         limiter.hit("step-up:"+id,10,Duration.ofMinutes(5));
         User user=users.lockById(id).orElseThrow(AuthService::unauthenticated);
         if (!user.status().equals("ACTIVE") || !user.emailVerified()) throw new ApiException(HttpStatus.FORBIDDEN,"ACCOUNT_INELIGIBLE","This user cannot perform this action.");
-        if (password==null || password.getBytes(StandardCharsets.UTF_8).length>72 || !passwords.matches(password,user.passwordHash()))
+        if (password==null || password.getBytes(StandardCharsets.UTF_8).length>72 || !matches(password,user.passwordHash()))
             throw new ApiException(HttpStatus.FORBIDDEN,"VERIFICATION_FAILED","Check your password and security code.");
         if (user.mfaEnabled()) {
             try { requireMfa(user,code==null?"":code); }
@@ -211,7 +212,7 @@ public class AuthService {
     public void disableMfa(UUID id,DisableMfa input) {
         limiter.hit("mfa-disable:"+id,5,Duration.ofMinutes(10));
         User user=users.lockById(id).orElseThrow(AuthService::unauthenticated);
-        if (!user.mfaEnabled() || !passwords.matches(input.password(),user.passwordHash())) throw unauthenticated();
+        if (!user.mfaEnabled() || !matches(input.password(),user.passwordHash())) throw unauthenticated();
         requireMfa(user,input.code()); user.disableMfa();
         jdbc.update("DELETE FROM mfa_recovery_codes WHERE user_id=?",id);
         jdbc.update("UPDATE refresh_tokens SET revoked=true WHERE user_id=?",id);
@@ -231,7 +232,7 @@ public class AuthService {
         Instant now=Instant.now();
         var claims=JwtClaimsSet.builder().issuer("securebank").subject(user.id().toString()).audience(List.of("securebank-api"))
             .issuedAt(now).expiresAt(now.plus(Duration.ofMinutes(accessMinutes))).id(UUID.randomUUID().toString())
-            .claim("role",user.role()).claim("ver",user.sessionVersion()).build();
+            .claim("role",user.role()).claim("ver",user.sessionVersion()).claim("mfa",user.mfaEnabled()).build();
         String access=jwt.encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(),claims)).getTokenValue();
         String refresh=Crypto.token();
         jdbc.update("INSERT INTO refresh_tokens(id,user_id,token_hash,family_id,expires_at) VALUES (?,?,?,?,?)",
@@ -265,6 +266,8 @@ public class AuthService {
         int length=password.getBytes(StandardCharsets.UTF_8).length;
         if (password.length()<12 || length>72) throw ApiException.badRequest("PASSWORD_POLICY","Use at least 12 characters and no more than 72 UTF-8 bytes.");
     }
+    private boolean matches(String raw,String hash) { return raw!=null && raw.getBytes(StandardCharsets.UTF_8).length<=72 && passwords.matches(raw,hash); }
     private String normalize(String email) { return email.trim().toLowerCase(Locale.ROOT); }
     private static ApiException unauthenticated() { return new ApiException(HttpStatus.UNAUTHORIZED,"INVALID_CREDENTIALS","The credentials are invalid or expired."); }
 }
+

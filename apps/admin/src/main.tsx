@@ -1,9 +1,16 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import './styles.css';
-const client = new QueryClient();
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from '@securebank/ui';
+import { App } from './App';
+import '@securebank/ui/styles.css';
 ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode><QueryClientProvider client={client}><BrowserRouter><main><p>SECUREBANK / OPERATIONS</p><h1>A complete view.<br/>A considered response.</h1><p>Restricted staff workspace.</p><small>Educational banking simulator</small></main></BrowserRouter></QueryClientProvider></React.StrictMode>,
+  <React.StrictMode>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    </QueryClientProvider>
+  </React.StrictMode>,
 );
