@@ -34,7 +34,7 @@ Local email is captured by [Mailpit](http://localhost:8025). `docker compose up 
 - `GET /accounts` lists only the current customer's accounts.
 - `POST /accounts` accepts `type: SAVINGS | CURRENT`. This simulator permits one account of each type per customer.
 - `GET /accounts/{id}` requires ownership. Foreign and missing IDs both return 404.
-- `GET /accounts/{id}/transactions` returns that owned account's paginated history using the transaction filters below.
+- `GET /accounts/{id}/transactions` returns that owned account's history with `page` and `size` pagination.
 
 Account operations require CUSTOMER. Staff use explicit staff routes with their own role policies.
 
